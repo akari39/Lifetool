@@ -1,0 +1,4124 @@
+//
+//  Data.swift
+//  Lifetool
+//
+//  Created by 范艺晨 on 2020/3/28.
+//  Copyright © 2020 SUESiOSClub. All rights reserved.
+//
+
+import Foundation
+import SwiftUI
+
+
+func load<T: Decodable>(_ filename: String) -> T {
+    let data: Data
+    guard let file = Bundle.main.url(forResource: filename, withExtension: nil)
+        else {
+            fatalError("Couldn't find \(filename) in main bundle.")
+    }
+    do {
+        data = try Data(contentsOf: file)
+    } catch {
+        fatalError("Couldn't load \(filename) from main bundle:\n\(error)")
+    }
+    
+    do {
+        let decoder = JSONDecoder()
+        return try decoder.decode(T.self, from: data)
+    } catch {
+        fatalError("Couldn't parse \(filename) as \(T.self):\n\(error)")
+    }
+}
+
+func load<T: Decodable>(_ data: Data) -> T? {
+    do {
+        let decoder = JSONDecoder()
+        return try decoder.decode(T.self, from: data)
+    } catch {
+        print("Couldn't parse data as \(T.self):\n\(error)")
+        return nil
+    }
+}
+
+final class ImageStore {
+    typealias _ImageDictionary = [String: CGImage]
+    fileprivate var images: _ImageDictionary = [:]
+
+    fileprivate static var scale = 2
+    
+    static var shared = ImageStore()
+    
+    func image(name: String) -> Image {
+        let index = _guaranteeImage(name: name)
+        
+        return Image(images.values[index], scale: CGFloat(ImageStore.scale), label: Text(verbatim: name))
+    }
+
+    static func loadImage(name: String) -> CGImage {
+        guard
+            let url = Bundle.main.url(forResource: name, withExtension: "jpg"),
+            let imageSource = CGImageSourceCreateWithURL(url as NSURL, nil),
+            let image = CGImageSourceCreateImageAtIndex(imageSource, 0, nil)
+        else {
+            fatalError("Couldn't load image \(name).jpg from main bundle.")
+        }
+        return image
+    }
+    
+    fileprivate func _guaranteeImage(name: String) -> _ImageDictionary.Index {
+        if let index = images.index(forKey: name) { return index }
+        
+        images[name] = ImageStore.loadImage(name: name)
+        return images.index(forKey: name)!
+    }
+}
+
+func post(url:URL,parameters:[String:String?],completionHandler:@escaping (DataResponse?,Error?)->Void){
+    var request = URLRequest(url: url)
+    request.httpMethod = "POST"
+    if let httpBody = try? JSONEncoder().encode(parameters){
+        request.httpBody = httpBody
+        print("发送：",String(decoding: httpBody, as: UTF8.self))
+    }
+    
+    let task = URLSession.shared.dataTask(with: request) { data, response, error in
+        print("接收：",String(decoding: data!, as: UTF8.self))
+        
+        guard let data = data,
+            let response = response as? HTTPURLResponse,
+            error == nil else {                        // check for fundamental networking error
+                print("error", error ?? "Unknown error")
+                let decodedData = DataResponse(execOKOrNotFlag: "0")
+                completionHandler(decodedData, error)
+                return
+        }
+
+        guard (200 ... 299) ~= response.statusCode else {                    // check for http errors
+            print("statusCode should be 2xx, but is \(response.statusCode)")
+            print("response = \(response)")
+            let decodedData = DataResponse(execOKOrNotFlag: "0")
+            completionHandler(decodedData, error)
+            return
+        }
+        
+        if let decodedData:DataResponse = load(data) {
+            completionHandler(decodedData, nil)
+        } else {
+            let decodedData = DataResponse(execOKOrNotFlag: "0")
+            completionHandler(decodedData, nil)
+        }
+    }
+    task.resume()
+}
+
+//
+//  NetworkManager.swift
+//  Lifetool
+//
+//  Created by 范艺晨 on 2020/5/1.
+//  Copyright © 2020 SUESiOSClub. All rights reserved.
+//
+
+import Foundation
+import Reachability
+
+class NetworkManager: NSObject {
+
+    var reachability: Reachability!
+
+    // Create a singleton instance
+    static let sharedInstance: NetworkManager = { return NetworkManager() }()
+
+
+    override init() {
+        super.init()
+
+        // Initialise reachability
+        reachability = try? Reachability()
+
+        // Register an observer for the network status
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(networkStatusChanged(_:)),
+            name: .reachabilityChanged,
+            object: reachability
+        )
+
+        do {
+            // Start the network status notifier
+            try reachability.startNotifier()
+        } catch {
+            print("Unable to start notifier")
+        }
+    }
+
+    @objc func networkStatusChanged(_ notification: Notification) {
+        // Do something globally here!
+    }
+
+    static func stopNotifier() -> Void {
+        do {
+            // Stop the network status notifier
+            try (NetworkManager.sharedInstance.reachability).startNotifier()
+        } catch {
+            print("Error stopping notifier")
+        }
+    }
+
+    // Network is reachable
+    static func isReachable(completed: @escaping (NetworkManager) -> Void) {
+        if (NetworkManager.sharedInstance.reachability).connection != .unavailable {
+            completed(NetworkManager.sharedInstance)
+        }
+    }
+
+    // Network is unreachable
+    static func isUnreachable(completed: @escaping (NetworkManager) -> Void) {
+        if (NetworkManager.sharedInstance.reachability).connection == .unavailable {
+            completed(NetworkManager.sharedInstance)
+        }
+    }
+
+    // Network is reachable via WWAN/Cellular
+    static func isReachableViaWWAN(completed: @escaping (NetworkManager) -> Void) {
+        if (NetworkManager.sharedInstance.reachability).connection == .cellular {
+            completed(NetworkManager.sharedInstance)
+        }
+    }
+
+    // Network is reachable via WiFi
+    static func isReachableViaWiFi(completed: @escaping (NetworkManager) -> Void) {
+        if (NetworkManager.sharedInstance.reachability).connection == .wifi {
+            completed(NetworkManager.sharedInstance)
+        }
+    }
+}
+//
+//  Instruction.swift
+//  Lifetool
+//
+//  Created by 范艺晨 on 2020/3/26.
+//  Copyright © 2020 SUESiOSClub. All rights reserved.
+//
+
+import Foundation
+import SwiftUI
+
+struct InstructionContent:Codable,Hashable,Identifiable{
+    var id:Int
+    var title:String?
+    var content:String
+}
+
+struct Instruction:Codable,Hashable,Identifiable{
+    var id:Int
+    var title:String
+    var describe:String?
+    var warning:String?
+    var content:[InstructionContent]?
+}
+//
+//  User.swift
+//  Lifetool
+//
+//  Created by 范艺晨 on 2020/4/14.
+//  Copyright © 2020 SUESiOSClub. All rights reserved.
+//
+
+import Foundation
+import Security
+
+class User:Codable,ObservableObject {
+    var userVerify:UserVerify?
+    var userAccount:UserAccount?
+    var userHealth:UserHealth?
+    var userLocation:UserLocation?
+    var userSkill:UserSkill?
+    
+    var isExist:Bool? = true
+    @Published var helpingUser:[User]? = [User]()
+    
+    enum CodingKeys: CodingKey {
+        case userVerify
+        case userAccount
+        case userHealth
+        case userLocation
+        case userSkill
+    }
+    
+    init(){
+        userVerify = UserVerify()
+        userAccount = UserAccount()
+        userHealth = UserHealth()
+        userLocation = UserLocation()
+        userSkill = UserSkill()
+        read()
+        if userAccount?.User_ID == nil{
+            isExist = false
+        }
+    }
+    
+    required init(from decoder: Decoder) throws {
+        let container = try? decoder.container(keyedBy: CodingKeys.self)
+        userVerify = try? container?.decode(UserVerify.self, forKey: .userVerify)
+        userAccount = try? container?.decode(UserAccount.self, forKey: .userAccount)
+        userHealth = try? container?.decode(UserHealth.self, forKey: .userHealth)
+        userLocation = try? container?.decode(UserLocation.self, forKey: .userLocation)
+        userSkill = try? container?.decode(UserSkill.self, forKey: .userSkill)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try? container.encode(userVerify, forKey: .userVerify)
+        try? container.encode(userAccount, forKey: .userAccount)
+        try? container.encode(userHealth, forKey: .userHealth)
+        try? container.encode(userLocation, forKey: .userLocation)
+        try? container.encode(userSkill, forKey: .userSkill)
+    }
+    
+    public func save(){
+        let encoder = JSONEncoder()
+        let defaultStand = UserDefaults.standard
+        
+        if let encoded = try? encoder.encode(userVerify){
+            defaultStand.set(encoded,forKey: "User_Verify")
+        }
+        
+        if let encoded = try? encoder.encode(userAccount){
+            defaultStand.set(encoded,forKey: "User_Account")
+        }
+        
+        if let encoded = try? encoder.encode(userHealth){
+            defaultStand.set(encoded,forKey: "User_Health")
+        }
+        
+        if let encoded = try? encoder.encode(userLocation){
+            defaultStand.set(encoded,forKey: "User_Location")
+        }
+        
+        if let encoded = try? encoder.encode(userSkill){
+            defaultStand.set(encoded,forKey: "User_Skill")
+        }
+    }
+    
+    public func read(){
+        let decoder = JSONDecoder()
+        let defaultStand = UserDefaults.standard
+        
+        if let userVerifyData = defaultStand.object(forKey: "User_Verify") as? Data {
+            if let userVerify = try? decoder.decode(UserVerify.self, from: userVerifyData) {
+                self.userVerify = userVerify
+            }
+        }
+        
+        if let userAccountData = defaultStand.object(forKey: "User_Account") as? Data {
+            if let userAccount = try? decoder.decode(UserAccount.self, from: userAccountData) {
+                self.userAccount = userAccount
+            }
+        }
+        
+        if let userHealthData = defaultStand.object(forKey: "User_Health") as? Data {
+            if let userHealth = try? decoder.decode(UserHealth.self, from: userHealthData) {
+                self.userHealth = userHealth
+            }
+        }
+        
+        if let userLocationData = defaultStand.object(forKey: "User_Location") as? Data {
+            if let userLocation = try? decoder.decode(UserLocation.self, from: userLocationData) {
+                self.userLocation = userLocation
+            }
+        }
+        
+        if let userSkillData = defaultStand.object(forKey: "User_Skill") as? Data {
+            if let userSkill = try? decoder.decode(UserSkill.self, from: userSkillData) {
+                self.userSkill = userSkill
+            }
+        }
+    }
+    
+    public func login(loginCompletionHandler:@escaping (Bool,Bool)->Void){
+        var User_Account:String?
+        let loginURL = URL(string:"https://lifetool.suesiosclub.com/lifetoolapp/login.php")!
+        
+        switch(self.userVerify?.Account_Type){
+        case "phone":
+            User_Account = userAccount?.User_phone
+        case "Email":
+            User_Account = userAccount?.User_email
+        case "NormalName":
+            User_Account = userAccount?.User_name
+        case "UUID":
+            User_Account = ""
+        case .none:
+            loginCompletionHandler(false,false)
+        case .some(_):
+            loginCompletionHandler(false,false)
+        }
+        
+        var accountExist:Bool = false
+        var execSuccessfully:Bool = false
+        
+        let postContent = ["Account_Type":self.userVerify?.Account_Type,"User_ID":self.userAccount?.User_ID,"User_Account":User_Account,"User_Password":userVerify?.User_Password]
+        post(url: loginURL, parameters: postContent as [String : String?], completionHandler: { decodedData,parseErr in
+            if let decodedData = decodedData{
+                if decodedData.accountBeingOrNotFlag=="1"{
+                    accountExist = true
+                }
+                if decodedData.execOKOrNotFlag == "1"{
+                    if self.userAccount?.User_ID == nil{
+                        self.userAccount?.User_ID = decodedData.content?[0].userAccount?.User_ID
+                        self.save()
+                    }
+                    execSuccessfully = true
+                }
+            }
+            loginCompletionHandler(accountExist,execSuccessfully)
+        })
+    }
+    
+    public func register(registerCompletionHandler:@escaping (Bool,Bool)->Void){
+        var User_Account:String?
+        let registerURL = URL(string:"https://lifetool.suesiosclub.com/lifetoolapp/register.php")!
+        
+        switch(self.userVerify?.Account_Type){
+        case "phone":
+            User_Account = userAccount?.User_phone
+        case "Email":
+            User_Account = userAccount?.User_email
+        case "NormalName":
+            User_Account = userAccount?.User_name
+        case .none:
+            registerCompletionHandler(false,false)
+        case .some(_):
+            registerCompletionHandler(false,false)
+        }
+        
+        let postContent = ["Account_Type":self.userVerify?.Account_Type,"User_Account":User_Account,"User_Password":userVerify?.User_Password,"Name":self.userHealth?.Name,"BornYear":self.userHealth?.BornYear,"Sex":self.userHealth?.Sex,"BloodType":self.userHealth?.BloodType,"Height":self.userHealth?.Height,"Weight":self.userHealth?.Weight,"DiseaseHistory":self.userHealth?.DiseaseHistory,"Anaphylaxis":self.userHealth?.Anaphylaxis,"isDoctor":self.userSkill?.isDoctor,"isTrained":self.userSkill?.isTrained]
+        DispatchQueue.main.async {
+            post(url: registerURL, parameters: postContent as [String : String?], completionHandler: { decodedData,parseErr in
+                var accountExist:Bool = false
+                var execSuccessfully:Bool = false
+                DispatchQueue.main.async {
+                    
+                    if let decodedData = decodedData{
+                        if decodedData.accountBeingOrNotFlag=="1"{
+                            accountExist = true
+                        }
+                        
+                        if decodedData.execOKOrNotFlag == "1"{
+                            execSuccessfully = true
+                            self.userAccount?.User_ID = decodedData.content?[0].userAccount?.User_ID
+                        }
+                    }
+                    registerCompletionHandler(accountExist,execSuccessfully)
+                }
+            })
+        }
+    }
+    
+    public func changeAccount(changeAccountCompletionHandler:@escaping (Bool,Bool)->Void){
+        let changeAccountURL = URL(string:"https://lifetool.suesiosclub.com/lifetoolapp/changeAccount.php")!
+        
+        let postContent = ["User_ID":self.userAccount?.User_ID,"User_Password":userVerify?.User_Password,"User_name":userAccount?.User_name,"User_email":userAccount?.User_email,"User_phone":userAccount?.User_phone]
+        
+        post(url: changeAccountURL, parameters: postContent, completionHandler: { decodedData,parseErr in
+            var accountExist:Bool = false
+            var execSuccessfully:Bool = false
+            if let decodedData = decodedData{
+                if decodedData.accountBeingOrNotFlag=="1"{
+                    accountExist = true
+                }
+                if decodedData.execOKOrNotFlag == "1"{
+                    execSuccessfully = true
+                }
+            }
+            changeAccountCompletionHandler(accountExist,execSuccessfully)
+        })
+    }
+    
+    public func changeHealth(changeHealthCompletionHandler:@escaping (Bool,Bool)->Void){
+        let registerURL = URL(string:"https://lifetool.suesiosclub.com/lifetoolapp/changeHealth.php")!
+        
+        let postContent = ["User_ID":self.userAccount?.User_ID,"User_Password":userVerify?.User_Password,"Name":self.userHealth?.Name,"BornYear":self.userHealth?.BornYear,"Sex":self.userHealth?.Sex,"BloodType":self.userHealth?.BloodType,"Height":self.userHealth?.Height,"Weight":self.userHealth?.Weight,"DiseaseHistory":self.userHealth?.DiseaseHistory,"Anaphylaxis":self.userHealth?.Anaphylaxis]
+        post(url: registerURL, parameters: postContent as [String : String?], completionHandler: { decodedData,parseErr in
+            var accountExist:Bool = false
+            var execSuccessfully:Bool = false
+            if let decodedData = decodedData{
+                if decodedData.accountBeingOrNotFlag=="1"{
+                    accountExist = true
+                }
+                if decodedData.execOKOrNotFlag == "1"{
+                    execSuccessfully = true
+                }
+            }
+            changeHealthCompletionHandler(accountExist,execSuccessfully)
+        })
+    }
+    
+    public func changeSkill(changeSkillCompletionHandler:@escaping (Bool,Bool)->Void){
+        let registerURL = URL(string:"https://lifetool.suesiosclub.com/lifetoolapp/changeSkill.php")!
+        
+        let postContent = ["User_ID":self.userAccount?.User_ID,"User_Password":userVerify?.User_Password,"isDoctor":self.userSkill?.isDoctor,"isTrained":self.userSkill?.isTrained]
+        post(url: registerURL, parameters: postContent as [String : String?], completionHandler: { decodedData,parseErr in
+            var accountExist:Bool = false
+            var execSuccessfully:Bool = false
+            if let decodedData = decodedData{
+                if decodedData.accountBeingOrNotFlag == "1"{
+                    accountExist = true
+                }
+                if decodedData.execOKOrNotFlag == "1"{
+                    execSuccessfully = true
+                }
+            }
+            changeSkillCompletionHandler(accountExist,execSuccessfully)
+        })
+    }
+    
+    public func changeUserLocation(changeUserLocationCompletionHandler:@escaping (Bool,Bool)->Void){
+        let registerURL = URL(string:"https://lifetool.suesiosclub.com/lifetoolapp/changeUserLocation.php")!
+        
+        let postContent = ["User_ID":self.userAccount?.User_ID,"User_Password":userVerify?.User_Password,"latitude":self.userLocation?.latitude,"longitude":self.userLocation?.longitude,"isAlerting":self.userLocation?.isAlerting]
+        post(url: registerURL, parameters: postContent as [String : String?], completionHandler: { decodedData,parseErr in
+            var accountExist:Bool = false
+            var execSuccessfully:Bool = false
+            if let decodedData = decodedData{
+                
+                if decodedData.accountBeingOrNotFlag=="1"{
+                    accountExist = true
+                }
+                
+                if decodedData.execOKOrNotFlag == "1"{
+                    execSuccessfully = true
+                }
+            }
+            changeUserLocationCompletionHandler(accountExist,execSuccessfully)
+        })
+    }
+    
+    public func deleteUser(deleteUserCompletionHandler:@escaping (Bool,Bool)->Void){
+        let deleteURL = URL(string:"https://lifetool.suesiosclub.com/lifetoolapp/deleteUser.php")!
+        
+        let postContent = ["User_ID":self.userAccount?.User_ID,"User_Password":userVerify?.User_Password]
+        post(url: deleteURL, parameters: postContent as [String : String?], completionHandler: { decodedData,parseErr in
+            var accountExist:Bool = false
+            var execSuccessfully:Bool = false
+            if let decodedData = decodedData{
+                if decodedData.accountBeingOrNotFlag=="1"{
+                    accountExist = true
+                }
+                if decodedData.execOKOrNotFlag == "1"{
+                    execSuccessfully = true
+                }
+            }
+            deleteUserCompletionHandler(accountExist,execSuccessfully)
+        })
+    }
+    
+    public func checkAccount(checkAccountCompletionHandler:@escaping (Bool,Bool)->Void){
+        let checkHealthURL = URL(string:"https://lifetool.suesiosclub.com/lifetoolapp/checkHealth.php")!
+        
+        let postContent = ["User_ID":self.userAccount?.User_ID,"User_Password":userVerify?.User_Password]
+        post(url: checkHealthURL, parameters: postContent, completionHandler: { decodedData,parseErr in
+            var accountExist:Bool = false
+            var execSuccessfully:Bool = false
+            if let decodedData = decodedData {
+                if decodedData.accountBeingOrNotFlag == "1"{
+                    accountExist = true
+                }
+                
+                if decodedData.execOKOrNotFlag == "1"{
+                    execSuccessfully = true
+                    self.userAccount = decodedData.content?[0].userAccount
+                    self.userHealth = decodedData.content?[0].userHealth
+                    self.userSkill = decodedData.content?[0].userSkill
+                    self.save()
+                }
+            }
+            
+            checkAccountCompletionHandler(accountExist,execSuccessfully)
+        })
+    }
+    
+    public func checkHelping(checkHelpingCompletionHandler:@escaping (Bool,Bool)->Void){
+        let checkHelpingURL = URL(string:"https://lifetool.suesiosclub.com/lifetoolapp/checkAlertingUser.php")!
+        
+        let postContent = ["User_ID":self.userAccount?.User_ID,"User_Password":userVerify?.User_Password,"latitude":self.userLocation?.latitude,"longitude":self.userLocation?.longitude]
+        post(url: checkHelpingURL, parameters: postContent, completionHandler: { decodedData,parseErr in
+            var accountExist:Bool = false
+            var execSuccessfully:Bool = false
+            if let decodedData = decodedData {
+                
+                if decodedData.execOKOrNotFlag == "1"{
+                    execSuccessfully = true
+                    self.helpingUser = decodedData.content
+                } else {
+                    self.helpingUser?.removeAll()
+                }
+            }
+            checkHelpingCompletionHandler(accountExist,execSuccessfully)
+        })
+    }
+}
+
+struct DataResponse:Codable{
+    var accountBeingOrNotFlag:String?
+    var execOKOrNotFlag:String?
+    var content:[User]?
+}
+
+struct UserVerify:Codable,Hashable{
+    var Account_Type:String?
+    var User_ID:String?
+    var User_Password:String?
+}
+
+struct UserAccount:Codable,Hashable {
+    var User_ID:String?
+    var User_name:String?
+    var User_email:String?
+    var User_phone:String?
+}
+
+struct UserHealth:Codable,Hashable {
+    var User_ID:String?
+    var Name:String?
+    var BornYear:String?
+    var Sex:String?
+    var BloodType:String?
+    var Height:String?
+    var Weight:String?
+    var DiseaseHistory:String?
+    var Anaphylaxis:String?
+}
+
+struct UserSkill:Codable,Hashable{
+    var User_ID:String?
+    var isDoctor:String = "0"
+    var isTrained:String = "0"
+}
+
+struct UserLocation:Codable,Hashable {
+    var User_ID:String?
+    var latitude:String?
+    var longitude:String?
+    var isAlerting:String?
+}
+
+//struct SocketSend:Convertable,Hashable{
+//    var request:WebsocketRequestType?
+//    var User_ID:String?
+//    var Helping_User_ID:String?
+//    var Helped_User_ID:String?
+//    var latitude:String?
+//    var longitude:String?
+//}
+//
+//class HelpUser: Convertable {
+//    var userHealth = UserHealth()
+//    var userLocation = UserLocation()
+//    var userSkill = UserSkill()
+//}
+//
+//struct SocketContent:Convertable {
+//    var request:WebsocketReceiveType?
+//    var execOKOrNotFlag:String?
+//    var user:[HelpUser?]
+//}
+//
+//enum WebsocketReceiveType:String,Convertable {
+//    case helpedraise = "helpedraise"
+//    case helpingraise = "helpingraise"
+//    case helpedcancel = "helpedcancel"
+//    case helpingcancel = "helpingcancel"
+//    case execResult = "execResult"
+//}
+//
+//enum WebsocketRequestType:String,Convertable {
+//    case searchHelped = "searchHelped"
+//    case searchHelping = "searchHelping"
+//    case submitHelping = "submitHelping"
+//    case submitHelped = "submitHelped"
+//    case cancelHelping = "cancelHelping"
+//    case cancelHelped = "cancelHelped"
+//    case searchNearby = "searchNearby"
+//}
+//
+//struct SocketReceive:Convertable {
+//    var type:WebsocketReceiveType?
+//    var content:SocketContent?
+//}
+//
+//protocol Convertable: Codable {
+//
+//}
+//
+//extension Convertable {
+//
+//    /// 直接将Struct或Class转成Dictionary
+//    func convertToDict() -> Dictionary<String, Any>? {
+//
+//        var dict: Dictionary<String, Any>? = nil
+//
+//        do {
+//            print("init student")
+//            let encoder = JSONEncoder()
+//
+//            let data = try encoder.encode(self)
+//            print("struct convert to data")
+//
+//            dict = try JSONSerialization.jsonObject(with: data, options: .allowFragments) as? Dictionary<String, Any>
+//
+//        } catch {
+//            print(error)
+//        }
+//        return dict
+//    }
+//}
+//
+//  AppDelegate.swift
+//  Lifetool
+//
+//  Created by 范艺晨 on 2020/2/24.
+//  Copyright © 2020 SUESiOSClub. All rights reserved.
+//
+
+import UIKit
+
+@UIApplicationMain
+class AppDelegate: UIResponder, UIApplicationDelegate {
+    var restrictRotation:UIInterfaceOrientationMask = .portrait
+
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        // Override point for customization after application launch.
+        return true
+    }
+
+    // MARK: UISceneSession Lifecycle
+
+    func application(_ application: UIApplication, configurationForConnecting connectingSceneSession: UISceneSession, options: UIScene.ConnectionOptions) -> UISceneConfiguration {
+        // Called when a new scene session is being created.
+        // Use this method to select a configuration to create the new scene with.
+        return UISceneConfiguration(name: "Default Configuration", sessionRole: connectingSceneSession.role)
+    }
+
+    func application(_ application: UIApplication, didDiscardSceneSessions sceneSessions: Set<UISceneSession>) {
+        // Called when the user discards a scene session.
+        // If any sessions were discarded while the application was not running, this will be called shortly after application:didFinishLaunchingWithOptions.
+        // Use this method to release any resources that were specific to the discarded scenes, as they will not return.
+    }
+    
+    func application(_ application: UIApplication, supportedInterfaceOrientationsFor window: UIWindow?) -> UIInterfaceOrientationMask
+    {
+        return self.restrictRotation
+    }
+}
+
+//
+//  Login.swift
+//  Lifetool
+//
+//  Created by 范艺晨 on 2020/4/2.
+//  Copyright © 2020 SUESiOSClub. All rights reserved.
+//
+
+import SwiftUI
+
+//https://www.jianshu.com/p/3d36474a01d7
+func validateEmail(email:String) -> Bool {
+    let emailRegex: String = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,4}"
+    let emailTest: NSPredicate = NSPredicate(format: "SELF MATCHES %@", emailRegex)
+    return emailTest.evaluate(with: email)
+}
+
+func validateMobile(phone:String) -> Bool {
+    let phoneRegex: String = "^((13[0-9])|(15[^4,\\D])|(18[0,0-9])|(17[0,0-9]))\\d{8}$"
+    let phoneTest = NSPredicate(format: "SELF MATCHES %@", phoneRegex)
+    return phoneTest.evaluate(with: phone)
+}
+
+struct Login: View {
+    
+    @State private var name:String = ""
+    @State private var password:String = ""
+    @Binding var status:String
+    @Binding var user:User
+    
+    @State var isshowAlert = false
+    @State var errorMessage = ""
+    
+    @Binding var isSkip:Bool
+    
+    init(status:Binding<String>,user:Binding<User>,isSkip:Binding<Bool>){
+        UINavigationBar.appearance().barTintColor = UIColor(named:"Background")
+        UINavigationBar.appearance().shadowImage = UIImage()
+        UINavigationBar.appearance().backgroundColor = UIColor(named:"Background")
+        UINavigationBar.appearance().titleTextAttributes = [.foregroundColor : UIColor(named: "ThemeColor") as Any]
+        
+        self._status = status
+        self._user = user
+        self._isSkip = isSkip
+    }
+    
+    var body: some View {
+        NavigationView{
+            ZStack{
+                Color("Background").edgesIgnoringSafeArea(.all)
+                VStack(alignment: .leading){
+                    VStack(alignment: .leading){
+                        Text("用户名/手机/邮箱")
+                            .font(.headline)
+                        ZStack{
+                            RoundedRectangle(cornerRadius: 20).fill(Color.black.opacity(5/100))
+                                .frame(height: 45)
+//                            TextField("输入用户名/手机/邮箱", text: $name)
+//                                .textContentType(.name)
+//                                .keyboardType(.asciiCapable)
+//                                .frame(height: 40, alignment: .leading).padding(.horizontal, 10.0)
+                            CustomTextField(keyboardType: .asciiCapable, text: $name, placeholder: "输入用户名/手机/邮箱", isSafeText: false, textAlignment: .left)
+                            .frame(height: 40, alignment: .leading).padding(.horizontal, 10.0)
+                        }
+                    }
+                    
+                    Spacer().frame(height:15)
+                    
+                    VStack(alignment: .leading){
+                        Text("密码")
+                            .font(.headline)
+                        ZStack{
+                            RoundedRectangle(cornerRadius: 20).fill(Color.black.opacity(5/100))
+                            .frame(height: 45)
+                            CustomTextField(keyboardType: .asciiCapable, text: $password, placeholder: "输入密码", isSafeText: true, textAlignment: .left)
+                            .frame(height: 40, alignment: .leading).padding(.horizontal, 10.0)
+                        }
+                    }
+            //                Button(action: /*@START_MENU_TOKEN@*/{}/*@END_MENU_TOKEN@*/) {
+            //                Text("忘记密码？")
+            //                    .foregroundColor(Color("ThemeColor"))
+            //                }
+                    Spacer()
+                    HStack(alignment:.center){
+                        Spacer()
+                        Button(action:{
+                            self.isSkip = true
+                            self.status = "HomeTabView"
+                        }){
+                            HStack{
+                                Text("跳过登录")
+                                        .font(.system(size: 18))
+                                }.foregroundColor(Color("ThemeColor").opacity(75/100))
+                            Image(systemName: "chevron.right")
+                                .foregroundColor(Color("ThemeColor").opacity(75/100))
+                        }
+                        Spacer()
+                    }
+                    Spacer().frame(height:30)
+                    HStack{
+                        Button(action:{
+                            self.status = "Register"
+                        }){
+                            ZStack(alignment: .center){
+                                RoundedRectangle(cornerRadius: 20).fill(Color("ThemeColor")).frame(width:110,height: 40)
+                                Text("注册")
+                                    .font(.system(size: 20))
+                                    .foregroundColor(Color.white)
+                            }
+                        }
+                        Spacer()
+                        Button(action:{
+                            if validateEmail(email: self.name) {
+                                self.user.userVerify?.Account_Type = "Email"
+                                self.user.userAccount?.User_email = self.name
+                            } else if validateMobile(phone: self.name) {
+                                self.user.userVerify?.Account_Type = "phone"
+                                self.user.userAccount?.User_phone = self.name
+                            } else {
+                                self.user.userVerify?.Account_Type = "NormalName"
+                                self.user.userAccount?.User_name = self.name
+                            }
+                            self.user.userVerify?.User_Password = self.password
+                            self.user.login(loginCompletionHandler: { L_accountExist,L_execSuccessfully in
+                                if (L_accountExist && L_execSuccessfully) {
+                                    self.user.checkAccount(checkAccountCompletionHandler: {CA_accountExist,CA_execSuccessfully in
+                                        if(CA_accountExist&&CA_execSuccessfully){
+                                            self.user.save()
+                                            self.isSkip = false
+                                            self.status = "HomeTabView"
+                                        }
+                                    })
+                                } else {
+                                    if !L_accountExist {
+                                        self.isshowAlert = true
+                                        self.errorMessage = "用户不存在"
+                                    } else if L_accountExist && !L_execSuccessfully {
+                                        self.errorMessage = "密码错误"
+                                        self.isshowAlert = true
+                                    } else {
+                                        self.errorMessage = "查询错误"
+                                    }
+                                }
+                            })
+                        }){
+                            HStack(alignment:.center){
+                                Text("登录")
+                                    .font(.system(size: 22))
+                                Image(systemName: "arrow.right")
+                                    .font(.system(size: 22))
+                            }.foregroundColor(Color("ThemeColor"))
+                        }.alert(isPresented: $isshowAlert){
+                            Alert(title: Text("登录失败"), message: Text(errorMessage), dismissButton: .default(Text("好")))
+                        }
+                    }
+                }.padding()
+            }.navigationBarTitle(Text("登录").foregroundColor(Color("ThemeColor")))
+        }
+    }
+}
+
+//struct Login_Previews: PreviewProvider {
+//    static var previews: some View {
+//        Login(status:.constant("Login"))
+//    }
+//}
+//
+//  Register.swift
+//  Lifetool
+//
+//  Created by 范艺晨 on 2020/4/11.
+//  Copyright © 2020 SUESiOSClub. All rights reserved.
+//
+
+import SwiftUI
+
+func validatePassword(password:String) -> Bool {
+    let passWordRegex = "^(?![0-9]+$)(?![a-zA-Z]+$)[0-9A-Za-z]{8,16}$"
+    let passWordPredicate = NSPredicate(format: "SELF MATCHES%@", passWordRegex)
+    return passWordPredicate.evaluate(with: password)
+}
+
+func validateNickname(name:String) -> Bool {
+    let nicknameRegex = "^[\u{4e00}-\u{9fa5}]{4,8}$"
+    let passWordPredicate = NSPredicate(format: "SELF MATCHES%@", nicknameRegex)
+    return passWordPredicate.evaluate(with: name)
+}
+
+struct Register: View {
+    @State var currentPageIndex = 0
+    @State var isFirst = true
+    @State var isLast = false
+    
+    
+    @State var isShowFailAlert = false
+    @State var alertText:String = ""
+    
+    @Binding var user:User
+    @Binding var status:String
+    @Binding var isSkip:Bool
+    
+    @State var errorText:String = ""
+    
+    @State var view1_account_type = 0
+    @State var view1_name = ""
+    @State var view1_password = ""
+    @State var view1_passwordConfirm = ""
+    
+    @State var view2_selected_sex = 0
+    @State var view2_selectedBloodType = 0
+    @State var view2_bornyear = "（可选）"
+    
+    @State var view3_name = ""
+    @State var view3_height = ""
+    @State var view3_weight = ""
+    @State var view3_diseaseHistory = ""
+    @State var view3_anaphylaxis = ""
+    
+    @State var view4_isDoctor = false
+    @State var view4_isTrained = false
+    
+    var sex = ["（可选）","男","女"]
+    var bloodType = ["（可选）","A+","A-","B+","B-","AB+","AB-","O+","O-"]
+    var userAccountTypes = ["用户名","邮箱","手机号"]
+    
+    init(status:Binding<String>,user:Binding<User>,isSkip:Binding<Bool>){
+        UINavigationBar.appearance().barTintColor = UIColor(named:"Background")
+        UINavigationBar.appearance().shadowImage = UIImage()
+        UINavigationBar.appearance().backgroundColor = UIColor(named:"Background")
+        UINavigationBar.appearance().titleTextAttributes = [.foregroundColor : UIColor(named: "ThemeColor") as Any]
+        
+        self._status = status
+        self._user = user
+        self._isSkip = isSkip
+    }
+    
+    var body: some View {
+        NavigationView{
+            ZStack{
+                Color("Background").edgesIgnoringSafeArea(.all)
+                VStack(alignment:.leading){
+//                    RegisterPageViewController(currentPageIndex: $currentPageIndex, isFirst: $isFirst,isLast: $isLast, direction: $direction,viewControllers: [UIHostingController(rootView:RegisterPassword(user: $user, errorText: $errorText)),UIHostingController(rootView:DetailHealth1(user: $user)),UIHostingController(rootView: DetailHealth2(user: $user)),UIHostingController(rootView: DetailHealth3(user: $user))])
+                    PagerManager(pageCount: 4, currentIndex: $currentPageIndex){
+                        RegisterPassword(name: $view1_name, password: $view1_password, password_confirm: $view1_passwordConfirm, pickerSelection: $view1_account_type)
+                        DetailHealth1(selectedSex: $view2_selected_sex, selectedBloodType: $view2_selectedBloodType, date: $view2_bornyear)
+                        DetailHealth2(name: $view3_name, height: $view3_height, weight: $view3_weight, diseaseHistory: $view3_diseaseHistory, anaphylaxis: $view3_anaphylaxis)
+                        DetailHealth3(isDoctor: $view4_isDoctor, isTrained: $view4_isTrained)
+                    }
+                    Spacer()
+                    HStack{
+                        HStack(alignment: .center){
+                            Button(action: {
+                                if self.currentPageIndex == 0{
+                                    self.isFirst = true
+                                    self.isLast = false
+                                    self.status = "Login"
+                                } else {
+                                    self.isLast = false
+                                    self.currentPageIndex -= 1
+                                }
+                            }){
+                                Image(systemName: "arrow.left")
+                                    .font(.system(size: 22))
+                                Text("返回")
+                                    .font(.system(size: 22))
+                            }
+                        }.foregroundColor(Color("ThemeColor").opacity(75/100))
+                        Spacer()
+                        HStack(alignment:.center){
+                            Button(action: {
+//                                if self.currentPageIndex == 2{
+//                                    self.isLast = true
+//                                    self.currentPageIndex += 1
+//                                } else if self.currentPageIndex != 3{
+//                                    self.currentPageIndex += 1
+//                                }
+                                self.isFirst = false
+                                
+                                if self.currentPageIndex == 0 {
+                                    if self.view1_name == ""{
+                                        self.isShowFailAlert = true
+                                        self.errorText = "用户名不能为空"
+                                    } else if self.view1_account_type == 1 && !validateEmail(email: self.view1_name){
+                                        self.isShowFailAlert = true
+                                        self.errorText = "邮箱格式错误"
+                                    } else if self.view1_account_type == 2 && !validateMobile(phone: self.view1_name){
+                                        self.isShowFailAlert = true
+                                        self.errorText = "手机格式错误"
+                                    } else if self.view1_password != self.view1_passwordConfirm {
+                                        self.isShowFailAlert = true
+                                        self.errorText = "两次密码不一致"
+                                    } else if !validatePassword(password: self.view1_password) {
+                                        self.isShowFailAlert = true
+                                        self.errorText = "密码必须大于8位小于16位且必须是大小写英文字母和数字的组合"
+                                    } else {
+                                        self.user.userVerify?.User_Password = self.view1_password
+                                        
+                                        if self.view1_account_type == 0{
+                                            self.user.userVerify?.Account_Type = "NormalName"
+                                        }else if self.view1_account_type == 1{
+                                            self.user.userVerify?.Account_Type = "Email"
+                                        }else if self.view1_account_type == 2{
+                                            self.user.userVerify?.Account_Type = "phone"
+                                        }
+                                        
+                                        switch(self.view1_account_type){
+                                        case 0:
+                                        self.user.userAccount?.User_name = self.view1_name
+                                        case 1:
+                                        self.user.userAccount?.User_email = self.view1_name
+                                        case 2:
+                                        self.user.userAccount?.User_phone = self.view1_name
+                                        default:
+                                            self.isShowFailAlert = true
+                                            self.errorText = "未选择用户类型"
+                                        }
+                                        self.currentPageIndex += 1
+                                    }
+                                
+//                                if self.currentPageIndex == 0 {
+//                                    if self.view1_name == ""{
+//                                        self.isShowFailAlert = true
+//                                        self.errorText = "用户名不能为空"
+//                                    } else if self.view1_password != self.view1_passwordConfirm {
+//                                        self.isShowFailAlert = true
+//                                        self.errorText = "两次密码不一致"
+//                                    } else if self.view1_password.count<8 {
+//                                        self.isShowFailAlert = true
+//                                        self.errorText = "密码必须大于8位"
+//                                    } else {
+//                                        self.user.userVerify?.User_Password = self.view1_password
+//
+//                                        if self.view1_account_type == 0{
+//                                            self.user.userVerify?.Account_Type = "NormalName"
+//                                        }else if self.view1_account_type == 1{
+//                                            self.user.userVerify?.Account_Type = "Email"
+//                                        }else if self.view1_account_type == 2{
+//                                            self.user.userVerify?.Account_Type = "phone"
+//                                        }
+//
+//                                        switch(self.view1_account_type){
+//                                        case 0:
+//                                        self.user.userAccount?.User_name = self.view1_name
+//                                        case 1:
+//                                        self.user.userAccount?.User_email = self.view1_name
+//                                        case 2:
+//                                        self.user.userAccount?.User_phone = self.view1_name
+//                                        default:
+//                                            self.isShowFailAlert = true
+//                                            self.errorText = "未选择用户类型"
+//                                        }
+//
+//                                        self.currentPageIndex += 1
+//                                    }
+                                }
+                                
+                                else if self.currentPageIndex == 1 {
+                                    
+                                    if self.sex[self.view2_selected_sex] != "（可选）"{
+                                        self.user.userHealth?.Sex = self.sex[self.view2_selected_sex]
+                                    }
+                                    
+                                    if self.bloodType[self.view2_selectedBloodType] != "（可选）"{
+                                        self.user.userHealth?.BloodType = self.bloodType[self.view2_selectedBloodType]
+                                    }
+                                    
+                                    if self.view2_bornyear != "（可选）"{
+                                        self.user.userHealth?.BornYear = self.view2_bornyear
+                                    }
+                                    self.currentPageIndex += 1
+                                }
+                                
+                                else if self.currentPageIndex == 2 {
+                                    self.isLast = true
+                                    self.user.userHealth?.Name = self.view3_name
+                                    self.user.userHealth?.Height = self.view3_height
+                                    self.user.userHealth?.Weight = self.view3_weight
+                                    self.user.userHealth?.DiseaseHistory = self.view3_diseaseHistory
+                                    self.user.userHealth?.Anaphylaxis = self.view3_anaphylaxis
+                                    
+                                    self.currentPageIndex += 1
+                                }
+                                
+                                else if self.currentPageIndex == 3 {
+                                    
+                                    if self.view4_isDoctor{
+                                        self.user.userSkill?.isDoctor = "1"
+                                    }
+                                    
+                                    if self.view4_isTrained{
+                                        self.user.userSkill?.isTrained = "1"
+                                    }
+                                    
+                                    self.user.register(registerCompletionHandler: {accountExist,execSuccessfully in
+                                        if accountExist{
+                                            self.isShowFailAlert = true
+                                            self.errorText = "账号已存在"
+                                            return
+                                        }
+                                        
+                                        if !execSuccessfully{
+                                            self.isShowFailAlert = true
+                                            self.errorText = "无法注册"
+                                            return
+                                        }
+                                        
+                                        if !accountExist && execSuccessfully {
+                                            self.user.changeHealth(changeHealthCompletionHandler: {accountExist,execSuccessfully in
+                                                if accountExist && execSuccessfully {
+                                                    self.user.changeSkill(changeSkillCompletionHandler: {accountExist,execSuccessfully in
+                                                        if accountExist && execSuccessfully{
+                                                            self.isSkip = false
+                                                            self.user.save()
+                                                            self.status = "HomeTabView"
+                                                        } else {
+                                                            self.isShowFailAlert = true
+                                                            self.errorText = "无法注册"
+                                                            return
+                                                        }
+                                                    })
+                                                } else {
+                                                    self.isShowFailAlert = true
+                                                    self.errorText = "无法注册"
+                                                    return
+                                                }
+                                            })
+
+                                        }
+                                        
+                                    })
+                                }
+                            }) {
+                                if isLast{
+                                    Text("完成")
+                                        .font(.system(size: 22))
+                                    Image(systemName: "checkmark")
+                                        .font(.system(size: 20))
+                                } else {
+                                    Text("继续")
+                                        .font(.system(size: 22))
+                                    Image(systemName: "arrow.right")
+                                        .font(.system(size: 22))
+                                }
+                            }.alert(isPresented: $isShowFailAlert){
+                                Alert(title: Text("注册失败"), message: Text(errorText), dismissButton: .default(Text("好")))
+                            }
+                        }.foregroundColor(Color("ThemeColor"))
+                    }.padding()
+                }.navigationBarTitle(
+                    Text("注册").foregroundColor(Color("ThemeColor"))
+                )
+            }
+        }
+    }
+}
+//
+//  DetailHealth2.swift
+//  Lifetool
+//
+//  Created by 范艺晨 on 2020/4/13.
+//  Copyright © 2020 SUESiOSClub. All rights reserved.
+//
+
+import SwiftUI
+
+struct DetailHealth2: View {
+    @Binding var name:String
+    @Binding var height:String
+    @Binding var weight:String
+    @Binding var diseaseHistory:String
+    @Binding var anaphylaxis:String
+    
+    init(name:Binding<String>,height:Binding<String>,weight:Binding<String>,diseaseHistory:Binding<String>,anaphylaxis:Binding<String>){
+        UITableView.appearance().separatorColor = .clear
+        UITableViewCell.appearance().backgroundColor = .none
+        UITableView.appearance().backgroundColor = .none
+        self._name = name
+        self._height = height
+        self._weight = weight
+        self._diseaseHistory = diseaseHistory
+        self._anaphylaxis = anaphylaxis
+    }
+    
+    var body: some View {
+        ZStack{
+            Color("Background").edgesIgnoringSafeArea(.all)
+            List{
+                VStack(alignment: .leading){
+                    VStack(alignment: .leading){
+                        Text("姓名")
+                            .font(.headline)
+                        ZStack{
+                            RoundedRectangle(cornerRadius: 20).fill(Color.black.opacity(5/100))
+                            .frame(height: 45)
+                            CustomTextField(keyboardType: .default, text: $name,placeholder: "输入姓名（可选）", isSafeText: false, textAlignment: .left)
+                            .frame(height: 40, alignment: .leading).padding(.horizontal, 10.0)
+                        }
+                    }
+                    
+                    VStack(alignment: .leading){
+                        Text("身高（厘米）")
+                            .font(.headline)
+                        ZStack{
+                            RoundedRectangle(cornerRadius: 20).fill(Color.black.opacity(5/100))
+                            .frame(height: 45)
+                            CustomTextField(keyboardType: .decimalPad, text: $height,placeholder: "输入身高（可选）", isSafeText: false, textAlignment: .left)
+                            .frame(height: 40, alignment: .leading).padding(.horizontal, 10.0)
+                        }
+                    }
+                    
+                    VStack(alignment: .leading){
+                        Text("体重（千克）")
+                            .font(.headline)
+                        ZStack{
+                            RoundedRectangle(cornerRadius: 20).fill(Color.black.opacity(5/100)).frame(height: 45)
+                            CustomTextField(keyboardType: .decimalPad, text: $weight, placeholder: "输入体重（可选）", isSafeText: false, textAlignment: .left)
+                            .frame(height: 40, alignment: .leading).padding(.horizontal, 10.0)
+                        }
+                    }
+                    
+                    VStack(alignment: .leading){
+                        Text("病史")
+                            .font(.headline)
+                        ZStack{
+                            RoundedRectangle(cornerRadius: 20).fill(Color.black.opacity(5/100)).frame(height: 45)
+                            CustomTextField(keyboardType: .default, text: $diseaseHistory, placeholder: "输入病史（可选）", isSafeText: false, textAlignment: .left)
+                            .frame(height: 40, alignment: .leading).padding(.horizontal, 10.0)
+                        }
+                    }
+                    
+                    VStack(alignment: .leading){
+                        Text("过敏反应")
+                            .font(.headline)
+                        ZStack{
+                            RoundedRectangle(cornerRadius: 20).fill(Color.black.opacity(5/100)).frame(height: 45)
+                            CustomTextField(keyboardType: .default, text: $diseaseHistory, placeholder: "输入过敏反应（可选）", isSafeText: false, textAlignment: .left)
+                            .frame(height: 40, alignment: .leading).padding(.horizontal, 10.0)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+//struct DetailHealth2_Previews: PreviewProvider {
+//    static var previews: some View {
+//        DetailHealth2()
+//    }
+//}
+//
+//  DetailHealth3.swift
+//  Lifetool
+//
+//  Created by 范艺晨 on 2020/4/14.
+//  Copyright © 2020 SUESiOSClub. All rights reserved.
+//
+
+import SwiftUI
+
+struct DetailHealth3: View {
+    @Binding var isDoctor:Bool
+    @Binding var isTrained:Bool
+    
+    init(isDoctor:Binding<Bool>,isTrained:Binding<Bool>){
+        UITableView.appearance().separatorColor = .clear
+        UITableViewCell.appearance().backgroundColor = .none
+        UITableView.appearance().backgroundColor = .none
+        self._isDoctor = isDoctor
+        self._isTrained = isTrained
+    }
+    
+    var body: some View {
+        ZStack{
+            Color("Background")
+            VStack{
+                Toggle(isOn: $isDoctor) {
+                    Text("我是医护工作者")
+                }
+
+                Toggle(isOn: $isTrained) {
+                    Text("我接受过急救培训")
+                }
+                Spacer()
+            }.padding()
+        }
+    }
+}
+
+//struct DetailHealth3_Previews: PreviewProvider {
+//    static var previews: some View {
+//        DetailHealth3()
+//    }
+//}
+//
+//  RegisterPassword.swift
+//  Lifetool
+//
+//  Created by 范艺晨 on 2020/4/2.
+//  Copyright © 2020 SUESiOSClub. All rights reserved.
+//
+
+import SwiftUI
+
+struct RegisterPassword: View {
+    
+    @Binding var name:String
+    @Binding var password:String
+    @Binding var password_confirm:String
+    
+    @State var userAccountTypeLabelText:String = ""
+    @Binding var pickerSelection:Int
+    @State var showAccountTypePicker:Bool = false
+    @State var userAccountTypes = ["用户名","邮箱","手机号"]
+    @State var date:String = ""
+    
+    var body: some View {
+        ZStack{
+            Color("Background").edgesIgnoringSafeArea(.all)
+            List{
+                VStack(alignment: .leading){
+                    VStack(alignment: .leading){
+                        Text("帐户类型")
+                            .font(.headline)
+                        Button(action:{
+                            self.showAccountTypePicker = true
+                        }){
+                                ZStack{
+                                    RoundedRectangle(cornerRadius:20).fill(Color.black.opacity(5/100)).frame(height:45)
+                                    Text(userAccountTypes[pickerSelection])
+                                    TextFieldWithPickerAsInputView(data: userAccountTypes, placeholder: "", selectionIndex: $pickerSelection, isFirstResponder: $showAccountTypePicker, date: $date, pickerType: .defaultpicker)
+                                }
+                        }.buttonStyle(BorderlessButtonStyle())
+                    }
+                    
+                    VStack(alignment: .leading){
+                        Text(userAccountTypes[pickerSelection])
+                            .font(.headline)
+                        ZStack{
+                            RoundedRectangle(cornerRadius: 20).fill(Color.black.opacity(5/100))
+                            .frame(height: 45)
+                            if userAccountTypes[pickerSelection] == "邮箱"{
+                                CustomTextField(keyboardType: .emailAddress, text: $name,placeholder: "输入注册帐号", isSafeText: false, textAlignment: .left)
+                                .frame(height: 40, alignment: .leading).padding(.horizontal, 10.0)
+                            } else {
+                                CustomTextField(keyboardType: .asciiCapable, text: $name,placeholder: "输入注册帐号", isSafeText: false, textAlignment: .left)
+                                .frame(height: 40, alignment: .leading).padding(.horizontal, 10.0)
+                            }
+                        }
+                    }
+                    
+                    VStack(alignment: .leading){
+                        Text("密码")
+                            .font(.headline)
+                        ZStack{
+                            RoundedRectangle(cornerRadius: 20).fill(Color.black.opacity(5/100)).frame(height: 45)
+                            CustomTextField(keyboardType: .asciiCapable, text: $password, placeholder: "输入密码", isSafeText: true, textAlignment: .left)
+                            .frame(height: 40, alignment: .leading).padding(.horizontal, 10.0)
+                        }
+                    }
+                    
+                    VStack(alignment: .leading){
+                        Text("确认密码")
+                            .font(.headline)
+                        ZStack{
+                            RoundedRectangle(cornerRadius: 20).fill(Color.black.opacity(5/100)).frame(height: 45)
+                            CustomTextField(keyboardType: .asciiCapable, text: $password_confirm, placeholder: "再次输入密码", isSafeText: true, textAlignment: .left)
+                            .frame(height: 40, alignment: .leading).padding(.horizontal, 10.0)
+                        }
+                    }
+                }
+            }.listRowBackground(Color("Background"))
+        }
+    }
+}
+
+//struct RegisterPassword_Previews: PreviewProvider {
+//    static var previews: some View {
+//        RegisterPassword()
+//    }
+//}
+//
+//  DetailEdit.swift
+//  Lifetool
+//
+//  Created by 范艺晨 on 2020/4/2.
+//  Copyright © 2020 SUESiOSClub. All rights reserved.
+//
+
+import SwiftUI
+
+struct BottomSheetPicker: View {
+    @Binding var selection:Int
+    var options:[String]
+
+    var body: some View {
+            ZStack(alignment: .center){
+                Color.gray.edgesIgnoringSafeArea(.all)
+                Group {
+                    Picker(selection: $selection, label: Text("Strength")) {
+                        ForEach(0 ..< options.count) {
+                            Text(self.options[$0])
+                        }
+                    }
+                    .pickerStyle(WheelPickerStyle())
+                    .foregroundColor(.white)
+                    .padding()
+
+                .labelsHidden()
+                }
+            }
+    }
+}
+
+struct DetailHealth1: View {
+    
+    var sex = ["(可选)","男","女"]
+    @Binding var selectedSex:Int
+    @State var showSexPicker = false
+    
+    var bloodType = ["(可选)","A+","A-","B+","B-","AB+","AB-","O+","O-"]
+    @Binding var selectedBloodType:Int
+    @State var showBTPicker = false
+    
+    @State var showDatePicker = false
+    @Binding var date:String
+    
+    init(selectedSex:Binding<Int>,selectedBloodType:Binding<Int>,date:Binding<String>){
+        UITableView.appearance().separatorColor = .clear
+        UITableViewCell.appearance().backgroundColor = .none
+        UITableView.appearance().backgroundColor = .none
+        self._selectedSex = selectedSex
+        self._selectedBloodType = selectedBloodType
+        self._date = date
+    }
+    
+    var body: some View {
+        ZStack{
+            Color("Background").edgesIgnoringSafeArea(.all)
+            List{
+                VStack(alignment: .leading){
+                    VStack(alignment: .leading){
+                        Text("性别")
+                            .font(.headline)
+    //                            UIApplication.shared.windows[0].rootViewController?.present(alertHC, animated: true){
+    //                            Text(sex[selectedSex]).fontWeight(.heavy)
+    //                                .frame(height: 40, alignment: .leading).padding(.horizontal, 10.0).multilineTextAlignment(.leading)
+                            
+                        Button(action:{
+                            self.showSexPicker = true
+                        }){
+                            ZStack{
+                                RoundedRectangle(cornerRadius: 20).fill(Color.black.opacity(5/100))
+                                .frame(height: 45)
+                                Text(sex[selectedSex])
+                                TextFieldWithPickerAsInputView(data: sex, placeholder: "请选择您的生理性别", selectionIndex: $selectedSex, isFirstResponder: $showSexPicker, date: $date, pickerType:.defaultpicker)
+                            }
+                        }.buttonStyle(BorderlessButtonStyle())
+                    }
+                    
+                    VStack(alignment: .leading){
+                        Text("血型")
+                            .font(.headline)
+                        Button(action:{
+                            self.showBTPicker = true
+                        }){
+                            ZStack{
+                                RoundedRectangle(cornerRadius: 20).fill(Color.black.opacity(5/100))
+                                .frame(height: 45)
+                                Text(bloodType[selectedBloodType])
+                                TextFieldWithPickerAsInputView(data: bloodType, placeholder: "请选择您的血型", selectionIndex: $selectedBloodType, isFirstResponder: $showBTPicker, date: $date, pickerType: .defaultpicker)
+                            }
+                        }.buttonStyle(BorderlessButtonStyle())
+                    }
+                    
+                    VStack(alignment: .leading){
+                        Text("出生年月")
+                            .font(.headline)
+                        Button(action:{
+                            self.showDatePicker = true
+                        }){
+                            ZStack{
+                                RoundedRectangle(cornerRadius: 20).fill(Color.black.opacity(5/100))
+                                .frame(height: 45)
+                                Text(date)
+                                TextFieldWithPickerAsInputView(data: bloodType, placeholder: "请选择您的出生年月", selectionIndex: $selectedBloodType, isFirstResponder: $showDatePicker, date: $date, pickerType: .date)
+                            }
+                        }.buttonStyle(BorderlessButtonStyle())
+                    }
+                }
+            }
+        }
+    }
+}
+
+//struct DetailEdit_Previews: PreviewProvider {
+//    static var previews: some View {
+//        DetailHealth1()
+//    }
+//}
+//
+//  LifetoolRootView.swift
+//  Lifetool
+//
+//  Created by 范艺晨 on 2020/4/11.
+//  Copyright © 2020 SUESiOSClub. All rights reserved.
+//
+
+import SwiftUI
+
+struct AppRootView: View {
+    @State var status:String = "HomeTabView"
+    @State var user = User()
+    
+    @State var isSkip = false
+    
+    @State var networkConnected = false
+    @State var autoLoginfailed = false
+    init(){
+        let network: NetworkManager = NetworkManager.sharedInstance
+        user.read()
+    }
+    
+    var body: some View {
+        Group {
+            if status == "Login" {
+                Login(status:$status, user:$user, isSkip: $isSkip)
+            } else if status == "Register" {
+                Register(status: $status, user: $user, isSkip: $isSkip)
+            } else {
+                HomeTabView(user: $user,status:$status,networkConnected:$networkConnected,isSkip:$isSkip)
+            }
+        }
+        .alert(isPresented: $autoLoginfailed){
+            Alert(title: Text("登录失败！"), message: Text(""), dismissButton: .default(Text("好")))
+        }
+        .onAppear(perform: {
+            NetworkManager.isReachable { _ in
+                DispatchQueue.main.async {
+                    self.networkConnected = true
+                    self.isSkip = true
+                    if self.user.isExist! {
+                        self.user.login(loginCompletionHandler: { accountExist,execSuccessfully in
+                            if accountExist && execSuccessfully {
+                                DispatchQueue.main.async {
+                                    self.status = "HomeTabView"
+                                    self.isSkip = false
+                                }
+                            } else {
+                                self.autoLoginfailed = true
+                            }
+                        })
+                    } else {
+                        self.status = "Login"
+                    }
+                }
+            }
+            
+            NetworkManager.isUnreachable(completed: { _ in
+                DispatchQueue.main.async {
+                    self.status = "HomeTabView"
+                }
+            })
+        })
+    }
+}
+//
+//  HomeTabView.swift
+//  Lifetool
+//
+//  Created by 范艺晨 on 2020/2/27.
+//  Copyright © 2020 SUESiOSClub. All rights reserved.
+//
+
+import SwiftUI
+import UIKit
+
+struct HomeTabView: View {
+    @State private var selection = 1
+    
+//    @EnvironmentObject var socket:HelpAlertSyncSocket
+    
+    @Binding var user:User
+    @Binding var status:String
+    @Binding var isSkip:Bool
+    @State var iamalerting = false
+    @Binding var networkConnected:Bool
+    
+    init(user:Binding<User>,status:Binding<String>,networkConnected:Binding<Bool>,isSkip:Binding<Bool>){
+        UITabBar.appearance().layer.borderWidth = 0.0
+        UITabBar.appearance().shadowImage = UIImage()
+        UITabBar.appearance().backgroundImage = UIImage()
+        UITabBar.appearance().isTranslucent = true
+        UITabBar.appearance().backgroundColor = UIColor(named:"Background")
+        UITabBar.appearance().tintColor = .clear
+
+        UINavigationBar.appearance().barTintColor = UIColor(named:"Background")
+        UINavigationBar.appearance().shadowImage = UIImage()
+        UINavigationBar.appearance().backgroundColor = UIColor(named:"Background")
+        UINavigationBar.appearance().titleTextAttributes = [.foregroundColor : UIColor(named: "ThemeColor") as Any]
+        
+        self._user = user
+        self._status = status
+        self._networkConnected = networkConnected
+        self._isSkip = isSkip
+    }
+    
+    var body: some View {
+        TabView(selection: $selection) {
+            HomeView(status: $status, user: $user, networkConnected: $networkConnected, isSkip: $isSkip)
+            .tabItem {
+                Image(systemName: "paperplane")
+                    .font(.system(size: 20,weight:.bold))
+                Text("快捷入口")
+            }.tag(1)
+            
+            Tips()
+            .tabItem {
+                Image(systemName: "cube.box")
+                        .font(.system(size: 20,weight:.bold))
+                Text("急救方法")
+            }.tag(2)
+//                HelpMap()
+//                .tabItem {
+//                VStack{
+//                    Image(systemName: "heart.circle.fill")
+//                        .font(.system(size: 25))
+//                    Text("地图")
+//                }
+//                }.tag(2)
+            if networkConnected && !isSkip{
+                HelpUserList(user: user,iamalerting:$iamalerting)
+                .onAppear(perform: {
+                    if let latitude = locationManager.location?.coordinate.latitude{
+                        if let longitude = locationManager.location?.coordinate.longitude{
+                            self.user.userLocation = UserLocation(User_ID: self.user.userAccount?.User_ID, latitude: "\(latitude)", longitude: "\(longitude)", isAlerting: "1")
+                            self.user.checkHelping(checkHelpingCompletionHandler: { _,_ in
+                                if self.user.helpingUser != nil{
+                                    for helpinguser in self.user.helpingUser!{
+                                        if helpinguser.userHealth?.User_ID == self.user.userAccount?.User_ID{
+                                            DispatchQueue.main.async{
+                                                self.iamalerting = true
+                                            }
+                                            break
+                                        }
+                                    }
+                                }
+                            })
+                        }
+                    }
+                })
+                    .tabItem {
+                        Image(systemName: "mappin.and.ellipse")
+                            .font(.system(size: 20,weight:.bold))
+                        Text("附近求助")
+                }.tag(3)
+            }
+        }.accentColor(Color("ThemeColor"))
+    }
+}
+
+//struct HomeTabView_Previews: PreviewProvider {
+//    static var previews: some View {
+//        HomeTabView()
+//    }
+//}
+//
+//  HelpList.swift
+//  Lifetool
+//
+//  Created by 范艺晨 on 2020/5/6.
+//  Copyright © 2020 SUESiOSClub. All rights reserved.
+//
+
+import SwiftUI
+import CoreLocation
+
+
+struct HelpUserCard: View{
+    var name:String? = "某位用户"
+    var distance:String = "未知位置"
+    var user:User
+    
+    init(user:User) {
+        self.user = user
+        self.name = user.userHealth?.Name
+        self.distance = "nmsl"
+        if user.userLocation?.latitude != nil && user.userLocation?.longitude != nil{
+            let latitude = Double(user.userLocation!.latitude!)
+            let longitude = Double(user.userLocation!.longitude!)
+            let usercoordinate = CLLocation(latitude:latitude!, longitude:longitude!)
+            guard let mycoordinate = locationManager.location else { return }
+
+            var distanceInMeters = usercoordinate.distance(from: mycoordinate)
+            distanceInMeters = distanceInMeters*0.62137
+            print(String(Int(distanceInMeters)) + "m")
+            self.distance = String(Int(distanceInMeters)) + "m"
+        }
+    }
+    
+    var body: some View{
+
+        ZStack{
+            NavigationLink(destination: HelpDetailView(user: user, distance: self.distance)){
+                EmptyView()
+            }
+            HStack{
+                Spacer().frame(width: 20)
+                VStack(alignment: .leading){
+                    Text(name!).font(.headline).foregroundColor(Color.white)
+                    Text(distance).font(.caption).foregroundColor(Color.white)
+                }
+                Spacer()
+                Image(systemName: "person.fill")
+                    .font(.system(size: 24))
+                    .foregroundColor(Color.white)
+                Spacer().frame(width: 20)
+            }.background(RoundedRectangle(cornerRadius: 10).fill(Color("ThemeColor"))
+            .frame(width: 340, height: 70))
+        }
+    }
+}
+
+struct HelpUserList: View {
+    @ObservedObject var user:User
+    @State var isAlertPresent:Bool = false
+    @State var name = "某位用户"
+    @State var distance = "距离未知"
+    @Binding var iamalerting:Bool
+    
+    init(user:User,iamalerting:Binding<Bool>){
+        UITableView.appearance().separatorColor = .clear
+        UITableViewCell.appearance().backgroundColor = .none
+        UITableView.appearance().backgroundColor = .none
+        self.user = user
+        self._iamalerting = iamalerting
+    }
+    
+    var body: some View {
+        NavigationView{
+            ZStack(alignment: .bottomTrailing){
+                Form{
+                    if !(user.helpingUser?.isEmpty ?? true){
+                        List{
+                            ForEach(user.helpingUser!, id: \User.userLocation?.User_ID){ helpingUser in
+                                HelpUserCard(user: helpingUser)
+                                    .padding()
+                            }
+                        }
+                    } else {
+                        Text("当前没有求助信息")
+                    }
+                }.navigationBarTitle("求助", displayMode: .inline)
+                .listRowBackground(Color("Background"))
+                .background(Color("Background"))
+                
+                VStack(alignment: .trailing){
+                    Button(action: {
+                        if let latitude = locationManager.location?.coordinate.latitude{
+                            if let longitude = locationManager.location?.coordinate.longitude{
+                                self.user.userLocation = UserLocation(User_ID: self.user.userAccount?.User_ID, latitude: "\(latitude)", longitude: "\(longitude)", isAlerting: "1")
+                                self.user.checkHelping(checkHelpingCompletionHandler: {_,_ in})
+                            }
+                        }
+                    }, label: {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.system(size: 24, weight: .bold))
+                            .frame(width: 66, height: 60)
+                            .foregroundColor(Color("ThemeColor"))
+                            .padding(.bottom, 7)
+                    })
+                        .background(Color.white)
+                    .cornerRadius(38.5)
+                        .padding()
+                    .shadow(color: Color.black.opacity(0.3),
+                            radius: 3,
+                            x: 2,
+                            y: 2)
+                    
+                    
+                    Button(action: {
+                        if !self.iamalerting{
+                            if let latitude = locationManager.location?.coordinate.latitude{
+                                if let longitude = locationManager.location?.coordinate.longitude{
+                                    self.user.userLocation = UserLocation(User_ID: self.user.userAccount?.User_ID, latitude: "\(latitude)", longitude: "\(longitude)", isAlerting: "1")
+                                    self.user.changeUserLocation(changeUserLocationCompletionHandler: { accountExist,execSuccessfully in
+                                        if !accountExist || !execSuccessfully{
+                                            self.isAlertPresent = true
+                                        } else if accountExist || execSuccessfully {
+                                            self.user.checkHelping(checkHelpingCompletionHandler: {_,_ in} )
+                                            self.iamalerting = true
+                                        }
+                                    })
+                                } else {
+                                    self.isAlertPresent = true
+                                }
+                            } else {
+                                self.isAlertPresent = true
+                            }
+                        } else {
+                            self.user.userLocation?.isAlerting = "0"
+                            self.user.changeUserLocation(changeUserLocationCompletionHandler: {accountExist,execSuccessfully in
+                                if !accountExist || !execSuccessfully{
+                                    self.isAlertPresent = true
+                                } else {
+                                    self.user.checkHelping(checkHelpingCompletionHandler: {_,_ in} )
+                                    self.iamalerting = false
+                                }
+                            })
+                        }
+                    }, label: {
+                        if self.iamalerting{
+                            Spacer().frame(width:20)
+                            Text("取消求助")
+                                .font(.system(size: 16, weight: .bold))
+                                .foregroundColor(Color.white)
+                            Text("×")
+                                .font(.system(size: 32, weight: .medium))
+                                .frame(width: 66, height: 60)
+                                .foregroundColor(Color.white)
+                                .padding(.bottom, 6)
+                        } else {
+                            Image(systemName: "bell")
+                                .font(.system(size: 24, weight: .bold))
+                                .frame(width: 66, height: 66,alignment: .center)
+                                .foregroundColor(Color.white)
+
+                        }
+                    })
+                    .background(Color("ThemeColor"))
+                    .cornerRadius(38.5)
+                        .padding([.leading, .bottom, .trailing])
+                    .shadow(color: Color.black.opacity(0.3),
+                            radius: 3,
+                            x: 2,
+                            y: 2)
+                        .alert(isPresented: $isAlertPresent){
+                            Alert(title: Text("上传失败"), message: Text(""), dismissButton: .default(Text("好")))
+                    }
+                }
+            }.onAppear(perform: {
+                self.user.checkHelping(checkHelpingCompletionHandler: {_,_ in})
+            })
+        }
+    }
+}
+
+//struct HelpList_Previews: PreviewProvider {
+//    static var previews: some View {
+//        HelpUserList()
+//    }
+//}
+//
+//  HelpDetailView.swift
+//  Lifetool
+//
+//  Created by 范艺晨 on 2020/5/6.
+//  Copyright © 2020 SUESiOSClub. All rights reserved.
+//
+
+import SwiftUI
+
+func getAgeFromDOF(date: String) -> String {
+
+    let dateFormater = DateFormatter()
+    dateFormater.dateFormat = "YYYY-MM-dd"
+    let dateOfBirth = dateFormater.date(from: date)
+
+    let calender = Calendar.current
+
+    let dateComponent = calender.dateComponents([.year, .month, .day], from:
+    dateOfBirth!, to: Date())
+
+    return String(dateComponent.year!)
+}
+
+struct HelpDetailView: View {
+    @State var user:User
+    @State var distance:String = "未知位置"
+    
+    var body: some View {
+            Form{
+                HelpMap(title: user.userHealth?.Name ?? "某位用户", subtitle: self.distance, user: user)
+                    .frame(height: 300)
+                List{
+                    Text(user.userHealth?.Name ?? "某位用户").font(.largeTitle)
+                    HStack{
+                        Text("距离 ").font(.system(size: 24, weight: .bold))
+                        Text(distance).font(.system(size: 24, weight: .bold))
+                    }
+                    
+                    Section{
+                        HStack{
+                            Text("性别").font(.headline)
+                            Spacer()
+                            if user.userHealth?.Sex != nil{
+                                Text(user.userHealth?.Sex ?? "未设定")
+                            }
+                        }
+                        
+                        HStack{
+                            Text("血型").font(.headline)
+                            Spacer()
+                            if user.userHealth?.BloodType != nil{
+                                Text(user.userHealth?.BloodType ?? "未设定")
+                            }
+                        }
+                        
+                        HStack{
+                            Text("年龄").font(.headline)
+                            Spacer()
+                            if user.userHealth?.BornYear != nil{
+                                Text(getAgeFromDOF(date: (user.userHealth!.BornYear!)) + " 岁")
+                            }
+                        }
+                        
+                        HStack{
+                            Text("身高").font(.headline)
+                            Spacer()
+                            if user.userHealth?.Height != nil{
+                                Text(user.userHealth!.Height! + " 厘米")
+                            }
+                        }
+                        
+                        HStack{
+                            Text("体重").font(.headline)
+                            Spacer()
+                            if user.userHealth?.Weight != nil{
+                                Text(user.userHealth!.Weight! + " 千克")
+                            }
+                        }
+                        
+                        VStack(alignment: .leading){
+                            Text("病史").font(.headline)
+                            Spacer()
+                            if user.userHealth?.DiseaseHistory != nil {
+                                Text(user.userHealth?.DiseaseHistory ?? "未设定")
+                            }
+                        }
+                        
+                        VStack(alignment: .leading){
+                            Text("过敏反应").font(.headline)
+                            Spacer()
+                            if user.userHealth?.Anaphylaxis != nil{
+                                Text(user.userHealth?.Anaphylaxis ?? "未设定")
+                            }
+                        }
+                    }
+                }
+        }.background(Color("Background"))
+        .listRowBackground(Color("Background"))
+    }
+}
+
+//struct HelpDetailView_Previews: PreviewProvider {
+//    static var previews: some View {
+//        HelpDetailView()
+//    }
+//}
+//
+//  HelpMap.swift
+//  Lifetool
+//
+//  Created by 范艺晨 on 2020/5/6.
+//  Copyright © 2020 SUESiOSClub. All rights reserved.
+//
+
+import SwiftUI
+import MapKit
+
+struct HelpMap: UIViewRepresentable {
+    @State var title:String
+    @State var subtitle:String
+    @State var user:User
+    
+    func makeUIView(context: Context) -> MKMapView {
+        let mapView = MKMapView(frame: .zero)
+        mapView.delegate = context.coordinator
+        mapView.showsUserLocation = true
+        return mapView
+    }
+
+    func updateUIView(_ view: MKMapView, context: Context) {
+        let annotation = MKPointAnnotation()
+        annotation.title = title
+        annotation.subtitle = subtitle
+        if user.userLocation?.latitude != nil && user.userLocation?.longitude != nil{
+            annotation.coordinate = CLLocationCoordinate2D(latitude: CLLocationDegrees(exactly: Double(Double(user.userLocation!.latitude!)!))!, longitude: CLLocationDegrees(exactly: Double(Double(user.userLocation!.longitude!)!))!)
+            view.addAnnotation(annotation)
+            view.setCenter(annotation.coordinate, animated: true)
+            view.setRegion(MKCoordinateRegion(center: annotation.coordinate, span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)), animated: true)
+        }
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    class Coordinator: NSObject, MKMapViewDelegate {
+        var parent: HelpMap
+
+        init(_ parent: HelpMap) {
+            self.parent = parent
+        }
+    }
+}
+//
+//  Tips.swift
+//  Lifetool
+//
+//  Created by 范艺晨 on 2020/3/17.
+//  Copyright © 2020 SUESiOSClub. All rights reserved.
+//
+
+import SwiftUI
+
+struct Tips: View {
+    
+    init(){
+        UITableView.appearance().separatorColor = .clear
+        UITableViewCell.appearance().backgroundColor = .none
+        UITableView.appearance().backgroundColor = .none
+        
+        UINavigationBar.appearance().barTintColor = UIColor(named:"Background")
+        UINavigationBar.appearance().shadowImage = UIImage()
+        UINavigationBar.appearance().backgroundColor = UIColor(named: "Background")
+        UINavigationBar.appearance().titleTextAttributes = [.foregroundColor : UIColor(named: "ThemeColor") as Any]
+    }
+    
+    var body: some View {
+        NavigationView{
+            Form{
+                HStack{
+                    ZStack{
+                        RoundedRectangle(cornerRadius: 10).fill(Color(red: 244/255, green: 159/255, blue: 97/255, opacity: 25/100)).frame(height: 60)
+                        HStack{
+                            Spacer().frame(width:50)
+                            Image("CPR").resizable().frame(width: 30, height: 30)
+                            Spacer()
+                            Text("心肺复苏").font(.system(size: 20))
+                                .foregroundColor(Color(red: 244/255, green: 159/255, blue: 97/255)).fontWeight(.bold)
+                            Spacer()
+                        }
+                    }.listRowBackground(Color("Background"))
+                    
+                    NavigationLink(destination: CPRPageView()){
+                            EmptyView()
+                        }.frame(width: 0)
+                }
+                    
+                HStack{
+                    ZStack{
+                        RoundedRectangle(cornerRadius: 10).fill(Color(red: 244/255, green: 159/255, blue: 97/255, opacity: 25/100)).frame(height: 60)
+                        HStack{
+                            Spacer().frame(width:50)
+                            Image("AED_orange")
+                                .resizable()
+                                .frame(width: 30, height: 30)
+                                .foregroundColor(Color(red: 244/255, green: 159/255, blue: 97/255))
+                            Spacer()
+                            Text("AED使用指南")
+                                .foregroundColor(Color(red: 244/255, green: 159/255, blue: 97/255)).font(.system(size: 20)).fontWeight(.bold)
+                            Spacer()
+                        }
+                    }
+                    NavigationLink(destination: AEDPageView()){
+                            EmptyView()
+                        }.frame(width: 0)
+                }
+            }.background(Color("Background").edgesIgnoringSafeArea(.all))
+            .navigationBarTitle("急救方法", displayMode: .inline)
+        }
+    }
+}
+
+struct Tips_Previews: PreviewProvider {
+    static var previews: some View {
+        Tips()
+    }
+}
+//
+//  TipsPageView.swift
+//  Lifetool
+//
+//  Created by 范艺晨 on 2020/4/14.
+//  Copyright © 2020 SUESiOSClub. All rights reserved.
+//
+
+import SwiftUI
+
+struct AEDPageView: View {
+    let aedguideData:[Instruction] = load("AED.json")
+    var body: some View {
+        ZStack{
+            Color("Background").edgesIgnoringSafeArea(.all)
+            InstructionContainer(instructions: aedguideData)
+        }
+    }
+}
+
+struct CPRPageView: View {
+    let cprguideData:[Instruction] = load("CPR.json")
+    var body: some View {
+        ZStack{
+            Color("Background").edgesIgnoringSafeArea(.all)
+            InstructionContainer(instructions: cprguideData)
+        }
+    }
+}
+
+struct TipsPageView_Previews: PreviewProvider {
+    static var previews: some View {
+        AEDPageView()
+    }
+}
+//
+//  MapView.swift
+//  Lifetool
+//
+//  Created by 范艺晨 on 2020/2/26.
+//  Copyright © 2020 SUESiOSClub. All rights reserved.
+//
+
+import SwiftUI
+import MapKit
+import CoreLocation
+import UIKit
+
+class MedicalAnnotation:NSObject,MKAnnotation{
+    var coordinate: CLLocationCoordinate2D
+    var title:String?
+    var subtitle:String?
+    var icon:String?
+    var color:UIColor?
+    var distance:String?
+    var type:String?
+    
+    override init(){
+        self.coordinate = CLLocationCoordinate2D()
+        self.title = nil
+        self.subtitle = nil
+        self.icon = nil
+        self.color = UIColor.white
+        self.distance = nil
+        self.type = nil
+    }
+}
+
+let medicallist = ["AED","医院"]
+
+let locationManager:CLLocationManager = {
+    let manager = CLLocationManager()
+    manager.requestAlwaysAuthorization()
+    manager.requestWhenInUseAuthorization()
+    manager.startUpdatingLocation()
+    return manager
+}()
+
+struct MapView: UIViewRepresentable {
+    @Binding var distance:[String:MedicalAnnotation]
+    
+    @Binding var userTrackingMode:MKUserTrackingMode
+    
+    static var allowUpdate = true
+    static var firstUpdated = false
+    
+    func makeUIView(context:Context) -> MKMapView {
+        let mapView = MKMapView(frame:.zero)
+        mapView.delegate = context.coordinator
+        
+        locationManager.requestWhenInUseAuthorization()
+        locationManager.requestAlwaysAuthorization()
+        
+        let timer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true, block: {_ in
+            MapView.allowUpdate.toggle()
+        })
+        timer.fire()
+        
+        if CLLocationManager.locationServicesEnabled(){
+            mapView.showsUserLocation = true
+            mapView.userTrackingMode = .follow
+            mapView.centerCoordinate = mapView.userLocation.coordinate
+            let span = MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+            let region = MKCoordinateRegion(center: mapView.userLocation.coordinate, span: span)
+            mapView.setRegion(region, animated: true)
+        }
+        
+        return mapView
+    }
+    
+    func updateUIView(_ mapView: MKMapView,context:Context){
+        mapView.setUserTrackingMode(userTrackingMode, animated: true)
+        let span = MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+        let region = MKCoordinateRegion(center: mapView.userLocation.coordinate, span: span)
+        mapView.setRegion(region, animated: true)
+    }
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+    
+    class Coordinator: NSObject, MKMapViewDelegate,MKLocalSearchCompleterDelegate{
+        var parent: MapView
+
+        var isUpdateLocation = false
+        var isSelected = false
+        
+        var latestNearestLocation = [String:MedicalAnnotation]()
+        var routeColor = UIColor()
+    
+        private var mapChangedFromUserInteraction = false
+
+        init(_ parent: MapView) {
+            self.parent = parent
+        }
+        
+        func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+            let renderer = MKPolylineRenderer(overlay: overlay)
+            renderer.strokeColor = routeColor
+            renderer.lineWidth = 4.0
+            return renderer
+        }
+
+        func lookUpCurrentLocation(completionHandler: @escaping (CLPlacemark?)
+                        -> Void ) {
+            if let lastLocation = locationManager.location {
+                let geocoder = CLGeocoder()
+                    
+                // Look up the location and pass it to the completion handler
+                geocoder.reverseGeocodeLocation(lastLocation,
+                            completionHandler: { (placemarks, error) in
+                    if error == nil {
+                        let firstLocation = placemarks?[0]
+                        completionHandler(firstLocation)
+                    }
+                    else {
+                     // An error occurred during geocoding.
+                        completionHandler(nil)
+                    }
+                })
+            }
+            else {
+                // No location was available.
+                completionHandler(nil)
+            }
+        }
+        
+        func searchForHealthPlaces(_ mapView:MKMapView,_ coordinate:CLLocationCoordinate2D,_ searchLists:[String]){
+            MapView.firstUpdated = true
+            for n in mapView.annotations{
+                if !n.isEqual(mapView.userLocation) {
+                    if CLCircularRegion(center: mapView.centerCoordinate, radius: CLLocationDistance(exactly: 500)!, identifier: "reachableRegion").contains(n.coordinate){
+                        return
+                    }
+                }
+            }
+            
+            let searchRequest = MKLocalSearch.Request()
+            searchRequest.region = MKCoordinateRegion(center: coordinate, span: MKCoordinateSpan(latitudeDelta: 0.3, longitudeDelta: 0.3))
+            for keyword in searchLists{
+                searchRequest.naturalLanguageQuery = keyword
+                if keyword=="医院"{
+                    searchRequest.resultTypes = .pointOfInterest
+                    searchRequest.pointOfInterestFilter = MKPointOfInterestFilter(including: [.hospital])
+                }
+                let search = MKLocalSearch(request: searchRequest)
+                search.start { response, error in
+                    guard let response = response else {
+                        print("Error: \(error?.localizedDescription ?? "Unknown error").")
+                        return
+                    }
+                    
+                    for item in response.mapItems {
+                        var isbreak = false
+                        for n in mapView.annotations{
+                            if !n.isEqual(mapView.userLocation){
+                                if (item.placemark.coordinate.latitude==n.coordinate.latitude)&&(item.placemark.coordinate.longitude==n.coordinate.longitude){
+                                    isbreak = true
+                                    break
+                                }
+                            }
+                        }
+                        if isbreak{
+                            break
+                        }
+                        
+                        let annotation = MedicalAnnotation()
+                        annotation.title = item.placemark.name
+                        if mapView.userLocation.location != nil {
+                            annotation.subtitle = String(Int(CLLocation(latitude: item.placemark.coordinate.latitude, longitude: item.placemark.coordinate.longitude).distance(from: mapView.userLocation.location!))) + "m"
+                        }
+                        
+                        annotation.distance = annotation.subtitle
+                        annotation.icon = keyword + "_white"
+                        annotation.coordinate = item.placemark.coordinate
+                        annotation.type = keyword
+                        mapView.addAnnotation(annotation)
+                        
+                        if !self.isSelected{
+                            if self.parent.distance[keyword] == nil{
+                                self.parent.distance[keyword] = annotation
+                            }else{
+                                if Int((annotation.distance?.replacingOccurrences(of: "m", with: ""))!)! < Int((self.parent.distance[keyword]?.distance?.replacingOccurrences(of: "m", with: ""))!)!{
+                                    self.parent.distance[keyword] = annotation
+                                }
+                            }
+                        }
+                    }
+                    
+                    if self.parent.distance[keyword] != nil && !self.isSelected{
+                        let directionRequest = MKDirections.Request()
+                        directionRequest.source = MKMapItem(placemark: MKPlacemark(coordinate: mapView.userLocation.coordinate))
+                        
+                        directionRequest.destination = MKMapItem(placemark: MKPlacemark(coordinate: self.parent.distance[keyword]!.coordinate))
+                        directionRequest.transportType = .walking
+                        
+                        let directions = MKDirections(request: directionRequest)
+                        directions.calculate { response, error in
+                            if self.parent.distance[keyword]!.type == "AED"{
+                                self.routeColor = UIColor(displayP3Red: 188/255, green: 27/255, blue: 27/255, alpha: 1)
+                            } else {
+                                self.routeColor = UIColor(named: "ThemeColor")!
+                            }
+                            guard let response = response else { return }
+                            let route = response.routes[0]
+                            mapView.addOverlay(route.polyline, level: .aboveRoads)
+                        }
+                    }
+                }
+            }
+        }
+        
+        func annotationChange(_ mapView:MKMapView){
+            
+            lookUpCurrentLocation(completionHandler: {(firstLocation) in
+                var addressString : String = ""
+                
+                if firstLocation?.thoroughfare != nil {
+                    addressString = addressString + (firstLocation?.thoroughfare!)!
+                }
+                if firstLocation?.subThoroughfare != nil {
+                    addressString = addressString + (firstLocation?.subThoroughfare!)!
+                }
+                if firstLocation?.locality != nil {
+                    addressString = addressString + "，" + (firstLocation?.locality!)!
+                }
+
+                if firstLocation?.subAdministrativeArea != nil {
+                    addressString = addressString + "，" + (firstLocation?.subAdministrativeArea!)!
+                }
+                mapView.userLocation.title = (firstLocation?.name) ?? "我的位置"
+                mapView.userLocation.subtitle = addressString
+
+            })
+        }
+        
+        func mapViewDidChangeVisibleRegion(_ mapView: MKMapView) {
+            if parent.userTrackingMode != .none {
+                parent.userTrackingMode = .none
+            }
+        }
+        
+        func mapView(_ mapView: MKMapView, didUpdate userLocation: MKUserLocation) {
+            if (((mapView.centerCoordinate.latitude) == mapView.userLocation.coordinate.latitude) && ((mapView.centerCoordinate.longitude == mapView.centerCoordinate.longitude))) {
+                mapView.selectAnnotation(mapView.userLocation, animated: true)
+                searchForHealthPlaces(mapView,mapView.userLocation.coordinate,medicallist)
+            }
+            
+            if MapView.allowUpdate{
+                MapView.allowUpdate=false
+                if !isSelected{
+                    mapView.removeOverlays(mapView.overlays)
+                }
+                searchForHealthPlaces(mapView,mapView.userLocation.coordinate,medicallist)
+            }
+            annotationChange(mapView)
+        }
+        
+        func mapView(_ mapView: MKMapView, didSelect view: MKAnnotationView) {
+            if (view.annotation?.isEqual(mapView.userLocation))!{
+                return
+            } else {
+                isSelected = true
+                mapView.userTrackingMode = .none
+                mapView.removeOverlays(mapView.overlays)
+                if let medicalannotation = view.annotation as? MedicalAnnotation{
+                    latestNearestLocation[medicalannotation.type!] = parent.distance[medicalannotation.type!]
+                    parent.distance[medicalannotation.type!] = medicalannotation
+                    
+                    let directionRequest = MKDirections.Request()
+                    directionRequest.source = MKMapItem(placemark: MKPlacemark(coordinate: mapView.userLocation.coordinate))
+                    directionRequest.destination = MKMapItem(placemark: MKPlacemark(coordinate: medicalannotation.coordinate))
+                    directionRequest.transportType = .walking
+
+                    let directions = MKDirections(request: directionRequest)
+                    directions.calculate { response, error in
+                        if medicalannotation.type == "AED"{
+                            self.routeColor = UIColor(displayP3Red: 188/255, green: 27/255, blue: 27/255, alpha: 1)
+                        } else {
+                            self.routeColor = UIColor(named: "ThemeColor")!
+                        }
+                        guard let response = response else { return }
+                        let route = response.routes[0]
+                        mapView.addOverlay(route.polyline, level: .aboveRoads)
+                    }
+                }
+            }
+        }
+        
+        func mapView(_ mapView: MKMapView, didDeselect view: MKAnnotationView) {
+            if (view.annotation?.isEqual(mapView.userLocation))!{
+                return
+             } else {
+                if let medicalannotation = view.annotation as? MedicalAnnotation{
+                    isSelected = false
+                    mapView.removeOverlays(mapView.overlays)
+                    parent.distance[medicalannotation.type!] = latestNearestLocation[medicalannotation.type!]
+                    searchForHealthPlaces(mapView,mapView.userLocation.coordinate,medicallist)
+                    MapView.allowUpdate = false
+                }
+             }
+        }
+        
+        func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+            if annotation is MKUserLocation{
+                return nil
+            }
+            if let customannotation = annotation as? MedicalAnnotation {
+                
+                var view = mapView.dequeueReusableAnnotationView(withIdentifier: "customView") as? MKMarkerAnnotationView
+                if view == nil{
+                    view = MKMarkerAnnotationView(annotation: customannotation, reuseIdentifier: "customView")
+                }
+                
+                view?.annotation = customannotation
+                if customannotation.type == "医院"{
+                    view?.markerTintColor = UIColor(named: "ThemeColor")
+                }else if customannotation.type == "AED"{
+                    view?.markerTintColor = UIColor(displayP3Red: 188/255, green: 27/255, blue: 27/255, alpha: 1)
+                }
+                view?.clusteringIdentifier = "cluster"
+                view?.glyphImage = UIImage(named:customannotation.icon!)
+                view?.displayPriority = .required
+                return view
+            } else {
+                return nil
+            }
+        }
+    }
+}
+
+//struct MapView_Previews: PreviewProvider {
+//    static var previews: some View {
+//        MapView(userTrackingMode: MKUserTrackingMode.follow)
+//    }
+//}
+//
+//  HomeView.swift
+//  Lifetool
+//
+//  Created by 范艺晨 on 2020/2/24.
+//  Copyright © 2020 SUESiOSClub. All rights reserved.
+//
+
+import SwiftUI
+import UIKit
+import MapKit
+import CoreLocation
+
+struct HomeView: View {
+
+    @State var distance = [String:MedicalAnnotation]()
+    
+    @State private var userTrackingMode: MKUserTrackingMode = .none
+    @State var showingDetail = false
+    
+    @Binding var status:String
+    @Binding var user:User
+    @Binding var networkConnected:Bool
+    @Binding var isSkip:Bool
+    
+    @State var statusToChange:String = "HomeTabView"
+    
+    var body: some View {
+        
+        NavigationView{
+            VStack{
+                    ZStack(alignment: .bottomTrailing){
+                        MapView(distance:$distance, userTrackingMode: $userTrackingMode)
+                        VStack{
+                            Button(action: {
+                                self.userTrackingMode = .follow
+                            }) {
+                                ZStack{
+                                    Color("ThemeColor")
+                                        .frame(width: 45, height: 45)
+                                        .clipShape(RoundedRectangle(cornerRadius: 15))
+                                    .shadow(radius: 2.0)
+                                    Image(systemName: "location.fill")
+                                        .foregroundColor(Color.white)
+                                        .font(.headline)
+                                }
+                            }
+                        }.padding()
+                    }
+                QuickNavigation(distance: $distance, user: $user, networkConnected: $networkConnected)
+                    Spacer()
+                    }.background(Color("Background")
+                        .edgesIgnoringSafeArea(.all))
+
+            .navigationBarTitle(Text("首页"), displayMode: .inline)
+            .navigationBarItems(trailing:
+                Button(action: {
+                    if self.networkConnected||self.isSkip{
+                        self.showingDetail = true
+                    }
+                }) {
+                    if self.networkConnected||self.isSkip{
+                        Image(systemName: "person.crop.circle.fill").font(.title)
+                    }
+                }.sheet(isPresented: $showingDetail){
+                    UserInfoSheet(user: self.$user, status: self.$statusToChange, isSkip: self.$isSkip, showSheet: self.$showingDetail)
+                        .onDisappear{
+                        self.status = self.statusToChange
+                    }
+            })
+        }
+    }
+}
+//
+//struct ContentView_Previews: PreviewProvider {
+//    static var previews: some View {
+//        HomeView()
+//    }
+//}
+//
+//  QuickNavigation.swift
+//  Lifetool
+//
+//  Created by 范艺晨 on 2020/2/26.
+//  Copyright © 2020 SUESiOSClub. All rights reserved.
+//
+
+import SwiftUI
+import UIKit
+import MapKit
+
+struct QuickNavigation: View {
+    
+    @State private var HelpText = "求救"
+    
+    @State private var showingAlert = false
+    @State private var countdown = 6
+    
+    @State private var hospital:String = "医院"
+    @State private var AED:String = "AED"
+    
+    @Binding var distance:[String:MedicalAnnotation]
+    
+    @State private var timer:Timer!
+    @State private var isHelp = false
+    
+    @State private var scrollText = false
+    
+    @Binding var user:User
+    @Binding var networkConnected:Bool
+    
+//    func submitHelp(){
+//        self.timer.invalidate()
+//        let send = SocketSend(request: WebsocketRequestType.submitHelped, User_ID: user.userAccount!.User_ID!, latitude: String(Float(locationManager.location?.coordinate.latitude ?? 0)), longitude: String(Float(locationManager.location?.coordinate.longitude ?? 0)))
+//        socket.send(request: send)
+//        self.isHelp = true
+//        self.countdown = 6
+//        self.HelpText = "取消"
+//    }
+    
+    var body: some View {
+        VStack(alignment:.center){
+            
+            ZStack(alignment: .center){
+                QuickShape()
+                HStack{
+                    Image("direction")
+                        .resizable()
+                        .frame(width: 14, height: 19)
+                    Spacer()
+                        .frame(width:10,alignment: .center)
+                    Text("快速导航")
+                        .font(.footnote)
+                        .fontWeight(.black)
+                        .foregroundColor(Color.white)
+                        .frame(alignment: .center)
+                }
+            }.offset(y: -5)
+            
+            
+            VStack(alignment: .center){
+                HStack{
+                    Button(action: {
+                        if self.distance["医院"] != nil{
+                            let region = MKCoordinateRegion(center: self.distance["医院"]!.coordinate, span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.02))
+                            let placemark = MKPlacemark(coordinate: self.distance["医院"]!.coordinate, addressDictionary: nil)
+                            let mapItem = MKMapItem(placemark: placemark)
+                            let options = [
+                                MKLaunchOptionsMapCenterKey: NSValue(mkCoordinate: region.center),
+                                MKLaunchOptionsMapSpanKey: NSValue(mkCoordinateSpan: region.span)]
+                            mapItem.name = self.distance["医院"]?.title
+                            mapItem.openInMaps(launchOptions: options)
+                        }
+                    }) {
+                        HStack{
+                            Spacer()
+                                .frame(width: 20)
+                            Image("医院")
+                                .resizable()
+                            .foregroundColor(Color("ThemeColor"))
+                                .frame(width: 30, height: 30, alignment: .center)
+                            Spacer()
+                            VStack(alignment: .leading){
+                                Text(distance["医院"]?.title ?? hospital)
+                                    .foregroundColor(Color("ThemeColor"))
+                                    .fontWeight(.black)
+                                    .frame(alignment: .leading)
+                                Text(distance["医院"]?.distance ?? "暂无数据")
+                                    .font(.subheadline)
+                                    .foregroundColor(Color("ThemeColor"))
+                            }
+                            Spacer()
+                        }
+                    }
+                    .frame(width: 168, height: 55, alignment: .leading)
+                    .background(Color("ThemeColor").opacity(0.25))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    
+//                    Spacer()
+//                        .frame(height: 20)
+//                    if networkConnected{
+//                        Button(action: {
+//                            if self.HelpText == "求救"{
+//                                self.timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true, block: {_ in
+//                                    self.countdown -= 1
+//                                    if self.countdown == 0{
+//                                        self.showingAlert = false
+//                                        self.submitHelp()
+//                                    }
+//                                })
+//
+//                                self.isHelp = true
+//                                self.showingAlert = true
+//                                self.timer.fire()
+//                            }else{
+//                                self.socket.send(request: SocketSend(request: .cancelHelped, User_ID: self.user.userAccount?.User_ID))
+//                                self.HelpText = "求救"
+//                            }
+//                        }) {
+//                        Text("\(HelpText)")
+//                            .multilineTextAlignment(.center)
+//                            .padding()
+//                            .foregroundColor(Color.white)
+//                            .font(Font.largeTitle.bold())
+//                        }
+//
+//
+//                        .frame(width:130,height:130)
+//                        .background(Color("ThemeColor"))
+//                        .clipShape(Circle())
+//                        .alert(isPresented: $showingAlert) {
+//                            Alert(title: Text("确定要求救吗？"), message: Text("\(countdown)秒后开始求救"),primaryButton:
+//                                .default(Text("取消"),action: {
+//                                    self.timer.invalidate()
+//                                    self.isHelp = false
+//                                    self.countdown = 6
+//                                }),secondaryButton:
+//                                .destructive(Text("求救").bold(), action: {
+//                                self.timer.invalidate()
+//                                self.submitHelp()
+//                            })
+//                            )
+//                        }
+//                    } else {
+//                        Spacer().frame(width:130,height:130)
+//                    }
+                
+                Spacer()
+                    .frame(width: 20, alignment: .center)
+                
+                
+                    Button(action: {
+                        if self.distance["AED"] != nil{
+                            let region = MKCoordinateRegion(center: self.distance["AED"]!.coordinate, span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.02))
+                            let placemark = MKPlacemark(coordinate: self.distance["AED"]!.coordinate, addressDictionary: nil)
+                            let mapItem = MKMapItem(placemark: placemark)
+                            let options = [
+                                MKLaunchOptionsMapCenterKey: NSValue(mkCoordinate: region.center),
+                                MKLaunchOptionsMapSpanKey: NSValue(mkCoordinateSpan: region.span)]
+                            mapItem.name = self.distance["AED"]?.title
+                            mapItem.openInMaps(launchOptions: options)
+                        }
+                    }) {
+                        HStack{
+                            Spacer()
+                                .frame(width: 20)
+                            Image("AED")
+                                .resizable()
+                                .frame(width: 30, height: 30, alignment: .center)
+                                .foregroundColor(Color("ThemeColor"))
+                            Spacer()
+                            VStack(alignment: .leading){
+                                Text(distance["AED"]?.title ?? AED)
+                                    .foregroundColor(Color("ThemeColor"))
+                                    .fontWeight(.black)
+                                    .frame(alignment: .leading)
+                                Text(distance["AED"]?.distance ?? "暂无数据")
+                                    .font(.subheadline)
+                                    .frame(alignment: .leading)
+                                .foregroundColor(Color("ThemeColor"))
+                            }
+                            Spacer()
+                        }
+                    }
+                    .frame(width: 168, height: 55, alignment: .center)
+                    .background(Color("ThemeColor").opacity(0.25))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                }
+            
+                    Spacer()
+                        .frame(height: 20)
+                    
+                    Button(action: {
+                        let tel = "tel://120"
+                        let url = URL(string: tel)!
+                        UIApplication.shared.open(url,options: [:],completionHandler: nil)
+                    }) {
+                        VStack{
+                            Text("拨打")
+                                .multilineTextAlignment(.center)
+                                
+                                .foregroundColor(Color.white)
+                                .font(Font.headline.bold())
+                            Text("120")
+                                .multilineTextAlignment(.center)
+                                .foregroundColor(Color.white)
+                                .font(.custom("Impact",size:48))
+                        }
+                    }
+                    .frame(width:130,height:130)
+                    .background(Color("ThemeColor"))
+                    .clipShape(Circle())
+            }
+            
+            Spacer()
+                .frame(height: 20)
+            
+            NavigationLink(destination: CallGuide()) {
+                HStack{
+                    Text("拨打指南")
+                        .fontWeight(.black)
+                        .foregroundColor(Color("ThemeColor"))
+                    Image(systemName: "chevron.right")
+                    .foregroundColor(Color("ThemeColor"))
+                }
+            }
+        }
+    }
+}
+
+//struct QuickNavigation_Previews: PreviewProvider {
+//    static var previews: some View {
+//        QuickNavigation()
+//    }
+//}
+//
+//  CallGuide.swift
+//  Lifetool
+//
+//  Created by 范艺晨 on 2020/3/17.
+//  Copyright © 2020 SUESiOSClub. All rights reserved.
+//
+
+import SwiftUI
+
+struct CallGuide: View {
+    let callguideData:[Instruction] = load("CallGuide.json")
+    
+    var body: some View{
+        ZStack{
+            Color("Background").edgesIgnoringSafeArea(.all)
+            InstructionContainer(instructions: callguideData)
+        }
+    }
+}
+
+struct CallGuide_Previews: PreviewProvider {
+    static var previews: some View {
+        CallGuide()
+    }
+}
+//
+//  AlertNotification.swift
+//  Lifetool
+//
+//  Created by 范艺晨 on 2020/4/2.
+//  Copyright © 2020 SUESiOSClub. All rights reserved.
+//
+
+import SwiftUI
+
+struct AlertNotification: View {
+    var body: some View {
+        ZStack(alignment:.center){
+            RoundedRectangle(cornerRadius: 16).fill(Color("ThemeColor")).frame(width: 162, height: 32)
+            HStack{
+                Spacer()
+                Image(systemName: "bell.fill")
+                    .resizable()
+                    .foregroundColor(Color.white)
+                Spacer()
+                Text("您的附近有求助")
+                Spacer()
+            }
+        }.frame(width: 162, height: 32, alignment: .center)
+    }
+}
+
+struct AlertNotification_Previews: PreviewProvider {
+    static var previews: some View {
+        AlertNotification()
+    }
+}
+//
+//  UserInfoSheet.swift
+//  Lifetool
+//
+//  Created by 范艺晨 on 2020/4/11.
+//  Copyright © 2020 SUESiOSClub. All rights reserved.
+//
+
+import SwiftUI
+import Combine
+
+struct KeyboardHost<Content: View>: View {
+    let view: Content
+
+    @State private var keyboardHeight: CGFloat = 0
+
+    private let showPublisher = NotificationCenter.Publisher.init(
+        center: .default,
+        name: UIResponder.keyboardWillShowNotification
+    ).map { (notification) -> CGFloat in
+        if let rect = notification.userInfo?["UIKeyboardFrameEndUserInfoKey"] as? CGRect {
+            return rect.size.height
+        } else {
+            return 0
+        }
+    }
+
+    private let hidePublisher = NotificationCenter.Publisher.init(
+        center: .default,
+        name: UIResponder.keyboardWillHideNotification
+    ).map {_ -> CGFloat in 0}
+
+    // Like HStack or VStack, the only parameter is the view that this view should layout.
+    // (It takes one view rather than the multiple views that Stacks can take)
+    init(@ViewBuilder content: () -> Content) {
+        view = content()
+    }
+
+    var body: some View {
+        Form {
+            view
+        }
+        .padding(.bottom,keyboardHeight-42)
+        .onReceive(showPublisher.merge(with: hidePublisher)) { (height) in
+            self.keyboardHeight = height
+        }
+    }
+}
+
+struct UserInfoSheet: View {
+    @Environment(\.presentationMode) var presentationMode: Binding<PresentationMode>
+    
+    @Binding var user:User
+    @Binding var status:String
+    @Binding var isSkip:Bool
+    @Binding var showSheet:Bool
+    
+    @State var username = ""
+    @State var email = ""
+    @State var phone = ""
+    @State var name = ""
+    @State var password = ""
+    @State var sex = ""
+    @State var bloodType = ""
+    @State var date = ""
+    @State var otherdate = ""
+    @State var height = ""
+    @State var weight = ""
+    @State var diseaseHistory = ""
+    @State var anaphylaxis = ""
+    
+    @State var isDoctor = false
+    @State var isTrained = false
+    
+    @State var isDoctorText = ""
+    @State var isTrainedText = ""
+    
+    @State var showSexPicker = false
+    @State var showBloodTypePicker = false
+    @State var showBornDatePicker = false
+    
+    @State var edit:Bool = false
+    @State var editText:String = "编辑"
+    
+    @State var showlogoutalert = false
+    @State var showdeletealert = false
+
+    
+    @State var sexSelected:Int = 0
+    @State var bloodTypeSelected:Int = 0
+    
+    @State var isShowalert = false
+    
+    var sexs  = ["（可选）","男","女"]
+    var bloodTypes = ["（可选）","A+","A-","B+","B-","AB+","AB-","O+","O-"]
+    
+    init(user:Binding<User>,status:Binding<String>,isSkip:Binding<Bool>,showSheet:Binding<Bool>){
+        UINavigationBar.appearance().titleTextAttributes = [.foregroundColor : UIColor.label as Any]
+        UINavigationBar.appearance().backgroundColor = .systemBackground
+        
+        UITableViewCell.appearance().backgroundColor = .systemBackground
+        UITableView.appearance().backgroundColor = .systemBackground
+        
+        self._showSheet = showSheet
+        self._user = user
+        self._status = status
+        self._isSkip = isSkip
+        self.loadtoUI()
+        
+    }
+    
+    func loadtoUI(){
+        if self.user.userSkill?.isDoctor == "1"{
+            self.isDoctor = true
+            self.isDoctorText = "是"
+        } else {
+            self.isDoctor = false
+            self.isDoctorText = "否"
+        }
+        
+        if self.user.userSkill?.isTrained == "1"{
+            self.isTrained = true
+            self.isTrainedText = "是"
+        } else {
+            self.isTrained = false
+            self.isTrainedText = "否"
+        }
+        
+        self.username = self.user.userAccount?.User_name ?? ""
+        self.email = self.user.userAccount?.User_email ?? ""
+        self.phone = self.user.userAccount?.User_phone ?? ""
+        
+        self.name = self.user.userHealth?.Name ?? ""
+        self.date = self.user.userHealth?.BornYear ?? ""
+        for sex in 0...sexs.count-1{
+            if self.user.userHealth?.Sex == sexs[sex]{
+                self.sexSelected = sex
+            } else {
+                self.sexSelected = 0
+            }
+        }
+
+        for bloodtype in 0...bloodTypes.count-1{
+            if self.user.userHealth?.BloodType == bloodTypes[bloodtype]{
+                self.bloodTypeSelected = bloodtype
+            } else {
+                self.bloodTypeSelected = 0
+            }
+        }
+        
+        self.height = self.user.userHealth?.Height ?? ""
+        self.weight = self.user.userHealth?.Weight ?? ""
+        self.diseaseHistory = self.user.userHealth?.DiseaseHistory ?? ""
+        self.anaphylaxis = self.user.userHealth?.Anaphylaxis ?? ""
+    }
+    
+    var body:some View{
+        NavigationView{
+                KeyboardHost{
+                    if !isSkip{
+                    Section(header:Text("帐户信息").font(.headline)){
+                        HStack{
+                            Text("用户名").font(.headline)
+                            Spacer()
+                            if edit{
+                                CustomTextField(keyboardType: .asciiCapable, text: $username, placeholder: "请输入用户名", isSafeText: false, textAlignment: .right)
+                            } else {
+                                Text(user.userAccount?.User_name ?? "未设定")
+                            }
+                        }
+                        
+                        HStack{
+                            Text("邮箱").font(.headline)
+                            Spacer()
+                            if edit{
+                                CustomTextField(keyboardType: .emailAddress, text: $email, placeholder: "请输入邮箱", isSafeText: false, textAlignment: .right)
+                            } else {
+                                Text(user.userAccount?.User_email ?? "未设定")
+                            }
+                        }
+                        
+                        HStack{
+                            Text("手机号").font(.headline)
+                            Spacer()
+                            if edit{
+                                CustomTextField(keyboardType: .emailAddress, text: $phone, placeholder: "请输入手机号", isSafeText: false, textAlignment: .right)
+                            } else {
+                                Text(user.userAccount?.User_phone ?? "未设定")
+                            }
+                        }
+                    }
+                    
+                    Section(header:Text("健康资料").font(.headline)){
+                        HStack{
+                            Text("姓名").font(.headline)
+                            Spacer()
+                            if edit{
+                                CustomTextField(keyboardType: .emailAddress, text: $name, placeholder: "请输入姓名（可选）", isSafeText: false, textAlignment: .right)
+                            } else {
+                                Text(user.userHealth?.Name ?? "未设定")
+                            }
+                        }
+                        
+                        HStack{
+                            Text("性别").font(.headline)
+                            Spacer()
+                            if edit{
+                                Button(action:{self.showSexPicker=true}){
+                                    ZStack{
+                                        TextFieldWithPickerAsInputView(data: sexs, placeholder: "", selectionIndex: $sexSelected, isFirstResponder: $showSexPicker, date: $otherdate, pickerType: .defaultpicker).frame(width: 0, height: 0)
+                                        Text(sexs[sexSelected])
+                                    }
+                                }
+                            } else {
+                                Text(user.userHealth?.Sex ?? "未设定")
+                            }
+                        }
+                        
+                        HStack{
+                            Text("血型").font(.headline)
+                            Spacer()
+                            if edit{
+                                Button(action:{self.showBloodTypePicker=true}){
+                                    ZStack{
+                                        TextFieldWithPickerAsInputView(data: bloodTypes, placeholder: "", selectionIndex: $bloodTypeSelected, isFirstResponder: $showBloodTypePicker, date: $otherdate, pickerType: .defaultpicker).frame(width: 0, height: 0)
+                                        Text(bloodTypes[bloodTypeSelected])
+                                    }
+                                }
+                            }else{
+                                Text(user.userHealth?.BloodType ?? "未设定")
+                            }
+                        }
+                        
+                        HStack{
+                            Text("出生日期").font(.headline)
+                            Spacer()
+                            if edit{
+                                Button(action:{self.showBornDatePicker=true}){
+                                    ZStack{
+                                        TextFieldWithPickerAsInputView(data: bloodTypes, placeholder: "", selectionIndex: $bloodTypeSelected, isFirstResponder: $showBornDatePicker, date: $date, pickerType: .date).frame(width: 0, height: 0)
+                                        Text(date)
+                                    }
+                                }
+                            }else{
+                                Text(user.userHealth?.BornYear ?? "未设定")
+                            }
+                        }
+                        
+                        HStack{
+                            Text("身高（厘米）").font(.headline)
+                            Spacer()
+                            if edit{
+                                CustomTextField(keyboardType: .decimalPad, text: $height, placeholder: "请输入身高（可选）", isSafeText: false, textAlignment: .right)
+                            } else {
+                                Text(user.userHealth?.Height ?? "未设定")
+                            }
+                        }
+                        
+                        HStack{
+                            Text("体重（千克）").font(.headline)
+                            Spacer()
+                            if edit{
+                                CustomTextField(keyboardType: .decimalPad, text: $weight, placeholder: "请输入体重（可选）", isSafeText: false, textAlignment: .right)
+                            } else {
+                                Text(user.userHealth?.Weight ?? "未设定")
+                            }
+                        }
+                        
+                        VStack(alignment: .leading){
+                            Text("病史").font(.headline)
+                            Spacer()
+                            if edit{
+                                CustomTextField(keyboardType: .default, text: $diseaseHistory, placeholder: "请输入病史（可选）", isSafeText: false, textAlignment: .left)
+                            } else {
+                                Text(user.userHealth?.DiseaseHistory ?? "未设定")
+                            }
+                        }
+                        
+                        VStack(alignment: .leading){
+                            Text("过敏反应").font(.headline)
+                            Spacer()
+                            if edit{
+                                CustomTextField(keyboardType: .default, text: $anaphylaxis, placeholder: "请输入过敏反应（可选）", isSafeText: false, textAlignment: .left)
+                            } else {
+                                Text(user.userHealth?.Anaphylaxis ?? "未设定")
+                            }
+                        }
+                    }
+                    
+                    Section{
+                        if edit{
+                            Toggle(isOn: $isDoctor) {
+                                Text("我是医护工作者")
+                            }
+                        } else {
+                            HStack{
+                                Text("我是医护工作者")
+                                Spacer()
+                                Text(isDoctorText)
+                            }
+                        }
+
+                        if edit{
+                            Toggle(isOn: $isTrained) {
+                                Text("我接受过急救培训")
+                            }
+                        } else {
+                            HStack{
+                                Text("我接受过急救培训")
+                                Spacer()
+                                Text(isTrainedText)
+                            }
+                        }
+                    }
+                    
+                    Section{
+                        Button(action:{
+                            self.showlogoutalert = true
+                        }){
+                            HStack{
+                                Spacer()
+                                Text("注销")
+                                Spacer()
+                            }.alert(isPresented: $showlogoutalert) {
+                                Alert(title: Text("确定要注销吗？"), message: Text(""),primaryButton:
+                                    .default(Text("取消"),action: {
+                                        self.showlogoutalert = false
+                                    }),secondaryButton:
+                                    .destructive(Text("确定").bold(), action: {
+                                        let domain = Bundle.main.bundleIdentifier!
+                                        UserDefaults.standard.removePersistentDomain(forName: domain)
+                                        self.showlogoutalert = false
+                                        self.presentationMode.wrappedValue.dismiss()
+                                        self.showSheet = false
+                                        self.status = "Login"
+                                })
+                                )
+                            }
+                        }.foregroundColor(Color.blue)
+                    }
+                    
+                    Section{
+                        Button(action:{
+                            self.showdeletealert = true
+                        }){
+                            HStack{
+                                Spacer()
+                                Text("删除")
+                                Spacer()
+                            }.alert(isPresented: $showdeletealert) {
+                                Alert(title: Text("确定要删除帐号吗？"), message: Text(""),primaryButton:
+                                    .default(Text("取消"),action: {
+                                        self.showdeletealert = false
+                                    }),secondaryButton:
+                                    .destructive(Text("确定").bold(), action: {
+                                        self.user.deleteUser(deleteUserCompletionHandler: { _,execSuccessfully  in
+                                            if execSuccessfully{
+                                                let domain = Bundle.main.bundleIdentifier!
+                                                UserDefaults.standard.removePersistentDomain(forName: domain)
+                                                self.showdeletealert = false
+
+                                                self.showSheet = false
+                                                self.presentationMode.wrappedValue.dismiss()
+                                                self.status = "Login"
+                                            }
+                                        })
+                                    })
+                                )
+                            }
+                        }.foregroundColor(Color.red)
+                    }} else {
+                        Button(action:{
+                            self.presentationMode.wrappedValue.dismiss()
+                            self.status = "Login"
+
+                        }){
+                            VStack(alignment: .center){
+                                ZStack{
+                                    RoundedRectangle(cornerRadius: 20).fill(Color("ThemeColor")).frame(width:110,height: 40)
+                                    Text("登录")
+                                        .font(.system(size: 20))
+                                        .foregroundColor(Color.white)
+                                }
+                            }
+                        }
+                    }
+                    }.onAppear(perform: {
+                        self.loadtoUI()
+                    })
+                    
+                .navigationBarTitle("帐户")
+                .navigationBarItems(leading: Button(action:{
+                    if self.edit{
+                        self.editText = "编辑"
+                        self.edit = false
+                    } else {
+                        self.editText = "取消"
+                        self.edit = true
+                        
+                        if self.height == "未设定"{
+                            self.height = ""
+                            
+                        }
+                        if self.weight == "未设定"{
+                            self.weight = ""
+                        }
+                    }
+                }){
+                    if !isSkip{
+                        Text(editText)
+                    }
+                },trailing:
+                    Button(action:{
+                        if self.edit{
+                            
+                            self.user.userAccount?.User_name = self.username
+                            self.user.userAccount?.User_email = self.email
+                            self.user.userAccount?.User_phone = self.phone
+                            
+                            self.user.userHealth?.Name = self.name
+                            self.user.userHealth?.BornYear = self.date
+                            if self.sexs[self.sexSelected] == "（可选）"{
+                                self.user.userHealth?.Sex = ""
+                            } else {
+                                self.user.userHealth?.Sex = self.sexs[self.sexSelected]
+                            }
+                            if self.bloodTypes[self.bloodTypeSelected] == "（可选）"{
+                                self.user.userHealth?.BloodType = ""
+                            } else {
+                                self.user.userHealth?.BloodType = self.bloodTypes[self.bloodTypeSelected]
+                            }
+                            
+                            self.user.userHealth?.Height = self.height
+                            self.user.userHealth?.Weight = self.weight
+                            self.user.userHealth?.DiseaseHistory = self.diseaseHistory
+                            self.user.userHealth?.Anaphylaxis = self.anaphylaxis
+                            
+                            if self.isDoctor{
+                                self.user.userSkill?.isDoctor = "1"
+                            } else {
+                                self.user.userSkill?.isDoctor = "0"
+                            }
+                            
+                            if self.isTrained {
+                                self.user.userSkill?.isTrained = "1"
+                            } else {
+                                self.user.userSkill?.isTrained = "0"
+                            }
+                            
+                            self.user.changeAccount(changeAccountCompletionHandler: {CA_accountExist,CA_execSuccessfully in
+                                self.user.changeHealth(changeHealthCompletionHandler: { CH_accountExist,CH_execSuccessfully in
+                                    self.user.changeSkill(changeSkillCompletionHandler: {CS_accountExist,CS_execSuccessfully in
+                                        if CA_accountExist && CA_execSuccessfully && CH_accountExist && CH_execSuccessfully && CS_accountExist && CS_execSuccessfully{
+                                                self.editText = "编辑"
+                                                self.loadtoUI()
+                                                self.edit = false
+                                        } else {
+                                            self.isShowalert = true
+                                        }
+                                    })
+                            })})
+                            
+                        } else {
+                            self.presentationMode.wrappedValue.dismiss()
+                            
+                        }
+                    }){
+                        Text("完成")
+                    }.alert(isPresented: $isShowalert){
+                        Alert(title: Text("修改失败"), message: Text(""), dismissButton: .default(Text("好")))
+                    }
+                )
+        }
+    }
+}
+
+//struct UserInfoSheet_Previews: PreviewProvider {
+//    static var previews: some View {
+//        UserInfoSheet()
+//    }
+//}
+//
+//  PickerTextfield.swift
+//  Lifetool
+//
+//  Created by 范艺晨 on 2020/4/13.
+//  Copyright © 2020 SUESiOSClub. All rights reserved.
+//
+
+import SwiftUI
+
+enum PickerType{
+    case defaultpicker
+    case date
+}
+
+struct TextFieldWithPickerAsInputView : UIViewRepresentable {
+
+    var data : [String]
+    var placeholder : String
+
+    @Binding var selectionIndex:Int
+    @Binding var isFirstResponder:Bool
+    @Binding var date:String
+
+    private let textField = UITextField()
+    private let picker = UIPickerView()
+    private let datepicker = UIDatePicker()
+    private let toolbar = UIToolbar()
+    
+    var pickerType:PickerType
+    
+    func makeCoordinator() -> TextFieldWithPickerAsInputView.Coordinator {
+          Coordinator(self)
+     }
+    
+    func action(sender:UIButton!){
+        textField.resignFirstResponder()
+    }
+
+    func makeUIView(context: UIViewRepresentableContext<TextFieldWithPickerAsInputView>) -> UITextField {
+        switch(pickerType){
+            case .defaultpicker:
+                picker.delegate = context.coordinator
+                picker.dataSource = context.coordinator
+                picker.backgroundColor = .systemBackground
+                textField.inputView = picker
+            case .date:
+                datepicker.backgroundColor = .systemBackground
+                datepicker.locale = Locale(identifier: "zh_CN")
+                datepicker.datePickerMode = .date
+                datepicker.maximumDate = Date()
+                datepicker.addTarget(context.coordinator, action: #selector(context.coordinator.dateChange(datePicker:)), for: .valueChanged)
+                textField.inputView = datepicker
+        }
+        toolbar.barStyle = .default
+        toolbar.isTranslucent = true
+        toolbar.sizeToFit()
+        
+        let doneButton = UIBarButtonItem(title: "完成", style: UIBarButtonItem.Style.done, target: context.coordinator, action: #selector(context.coordinator.donePicker))
+        let spaceButton = UIBarButtonItem(barButtonSystemItem: UIBarButtonItem.SystemItem.flexibleSpace, target: nil, action: nil)
+        let cancelButton = UIBarButtonItem(title: "取消", style: UIBarButtonItem.Style.plain, target: context.coordinator, action: #selector(context.coordinator.cancelPicker))
+        
+        toolbar.setItems([cancelButton,spaceButton,doneButton], animated: true)
+        textField.inputAccessoryView = toolbar
+        textField.placeholder = placeholder
+        textField.delegate = context.coordinator
+        textField.isHidden = true
+        return textField
+    }
+    
+     func updateUIView(_ uiView: UITextField, context: UIViewRepresentableContext<TextFieldWithPickerAsInputView>) {
+        if isFirstResponder{
+            uiView.becomeFirstResponder()
+        }
+     }
+
+     class Coordinator: NSObject, UIPickerViewDataSource, UIPickerViewDelegate , UITextFieldDelegate {
+
+        private let parent : TextFieldWithPickerAsInputView
+        private var selectedIndex = 0
+        
+        init(_ textfield : TextFieldWithPickerAsInputView) {
+           self.parent = textfield
+        }
+
+        @objc func dateChange(datePicker:UIDatePicker){
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy-MM-dd"
+            let date = formatter.string(from:datePicker.date)
+            parent.date = date
+        }
+        
+        func numberOfComponents(in pickerView: UIPickerView) -> Int {
+           return 1
+        }
+
+        func pickerView(_ pickerView: UIPickerView, numberOfRowsInComponent component: Int) -> Int {
+           return self.parent.data.count
+        }
+
+        func pickerView(_ pickerView: UIPickerView, titleForRow row: Int, forComponent component: Int) -> String? {
+           return self.parent.data[row]
+        }
+
+        func pickerView(_ pickerView: UIPickerView, didSelectRow row: Int, inComponent component: Int) {
+            self.parent.$selectionIndex.wrappedValue = row
+        }
+
+        func textFieldDidEndEditing(_ textField: UITextField) {
+            self.parent.textField.resignFirstResponder()
+            self.parent.isFirstResponder = false
+        }
+        
+        @objc func cancelPicker(){
+            switch(parent.pickerType){
+            case .defaultpicker:
+                self.parent.$selectionIndex.wrappedValue = 0
+            case .date:
+                parent.date = ""
+            }
+            parent.textField.endEditing(true)
+        }
+        
+        @objc func donePicker(){
+            parent.textField.endEditing(true)
+        }
+    }
+}
+//
+//  QuickShape.swift
+//  Lifetool
+//
+//  Created by 范艺晨 on 2020/2/27.
+//  Copyright © 2020 SUESiOSClub. All rights reserved.
+//
+
+import SwiftUI
+
+struct Indicator: Shape {
+    var tl: CGFloat = 0.0
+    var tr: CGFloat = 0.0
+    var bl: CGFloat = 0.0
+    var br: CGFloat = 0.0
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+
+        let w = rect.size.width
+        let h = rect.size.height
+
+        // Make sure we do not exceed the size of the rectangle
+        let tr = min(min(self.tr, h), w)
+        let tl = min(min(self.tl, h), w)
+        let bl = min(min(self.bl, h), w)
+        let br = min(min(self.br, h), w)
+        
+        path.move(to:CGPoint(x:-UIScreen.main.bounds.width,y:0))
+        path.addLine(to: CGPoint(x:UIScreen.main.bounds.width,y:0))
+        path.addLine(to: CGPoint(x:UIScreen.main.bounds.width,y:-3))
+        path.addLine(to: CGPoint(x:-UIScreen.main.bounds.width,y:-3))
+        path.addLine(to: CGPoint(x:-UIScreen.main.bounds.width,y:0))
+
+        path.move(to: CGPoint(x: w / 2.0, y: 0))
+        path.addLine(to: CGPoint(x: w - tr, y: 0))
+        path.addArc(center: CGPoint(x: w - tr, y: tr), radius: tr,
+                    startAngle: Angle(degrees: -90), endAngle: Angle(degrees: 0), clockwise: false)
+
+        path.addLine(to: CGPoint(x: w, y: h - br))
+        path.addArc(center: CGPoint(x: w - br, y: h - br), radius: br,
+                    startAngle: Angle(degrees: 0), endAngle: Angle(degrees: 90), clockwise: false)
+
+        path.addLine(to: CGPoint(x: bl, y: h))
+        path.addArc(center: CGPoint(x: bl, y: h - bl), radius: bl,
+                    startAngle: Angle(degrees: 90), endAngle: Angle(degrees: 180), clockwise: false)
+
+        path.addLine(to: CGPoint(x: 0, y: tl))
+        path.addArc(center: CGPoint(x: tl, y: tl), radius: tl,
+                    startAngle: Angle(degrees: 180), endAngle: Angle(degrees: 270), clockwise: false)
+
+        return path
+    }
+}
+
+struct QuickShape: View {
+    var body: some View {
+        Indicator(tl: 0, tr: 0, bl: 100, br: 100)
+            .fill(Color("ThemeColor"))
+            .frame(width: 130, height: 25)
+    }
+}
+
+struct QuickShape_Previews: PreviewProvider {
+    static var previews: some View {
+        QuickShape()
+    }
+}
+//
+//  RegisterPageViewController.swift
+//  Lifetool
+//
+//  Created by 范艺晨 on 2020/4/11.
+//  Copyright © 2020 SUESiOSClub. All rights reserved.
+//
+
+import SwiftUI
+import UIKit
+
+//struct RegisterPageViewController: UIViewControllerRepresentable {
+//    @Binding var currentPageIndex:Int
+//    @Binding var isFirst:Bool
+//    @Binding var isLast:Bool
+//    @Binding var direction:UIPageViewController.NavigationDirection
+//
+//    var viewControllers: [UIViewController]
+//    
+//    func makeUIViewController(context: Context) -> UIPageViewController {
+//        let pageViewController = UIPageViewController(
+//            transitionStyle: .scroll,
+//            navigationOrientation: .horizontal)
+//        pageViewController.delegate = context.coordinator
+//        return pageViewController
+//    }
+//    
+//    func updateUIViewController(_ pageViewController: UIPageViewController, context: Context) {
+//        pageViewController.setViewControllers(
+//            [viewControllers[currentPageIndex]], direction: direction, animated: true)
+//    }
+//    
+//    func makeCoordinator() -> Coordinator {
+//        Coordinator(self)
+//    }
+//    
+//    class Coordinator:NSObject,UIPageViewControllerDelegate{
+//        var parent: RegisterPageViewController
+//
+//        init(_ pageViewController: RegisterPageViewController) {
+//            self.parent = pageViewController
+//        }
+//        
+//        func pageViewController(_ pageViewController: UIPageViewController, viewControllerBefore viewController: UIViewController) -> UIViewController? {
+//            //retrieves the index of the currently displayed view controller
+//            guard let index = parent.viewControllers.firstIndex(of: viewController) else {
+//                 return nil
+//             }
+//            
+//            //shows the last view controller when the user swipes back from the first view controller
+//            if index == 0 {
+//                parent.isFirst = true
+//                return nil
+//            }
+//            
+//            //show the view controller before the currently displayed view controller
+//            return parent.viewControllers[index - 1]
+//        }
+//        
+//        func pageViewController(_ pageViewController: UIPageViewController, viewControllerAfter viewController: UIViewController) -> UIViewController? {
+//                //retrieves the index of the currently displayed view controller
+//                guard let index = parent.viewControllers.firstIndex(of: viewController) else {
+//                    return nil
+//                }
+//                //shows the first view controller when the user swipes further from the last view controller
+//                if index + 1 == parent.viewControllers.count {
+//                    parent.isLast = true
+//                    return nil
+//                }
+//                //show the view controller after the currently displayed view controller
+//                return parent.viewControllers[index + 1]
+//        }
+////        func pageViewController(_ pageViewController: UIPageViewController, didFinishAnimating finished: Bool, previousViewControllers: [UIViewController], transitionCompleted completed: Bool) {
+////            if completed,
+////                let visibleViewController = pageViewController.viewControllers?.first,
+////                let index = parent.viewControllers.firstIndex(of:visibleViewController){
+////                parent.currentPageIndex = index
+////            }
+////        }
+//    }
+//}
+//
+//  PagerManager.swift
+//  Lifetool
+//
+//  Created by 范艺晨 on 2020/4/30.
+//  Copyright © 2020 SUESiOSClub. All rights reserved.
+//
+
+import SwiftUI
+
+struct PagerManager<Content: View>: View {
+    let pageCount: Int
+    @Binding var currentIndex: Int
+    let content: Content
+
+    //Set the initial values for the variables
+    init(pageCount: Int, currentIndex: Binding<Int>, @ViewBuilder content: () -> Content) {
+        self.pageCount = pageCount
+        self._currentIndex = currentIndex
+        self.content = content()
+    }
+    
+    @GestureState private var translation: CGFloat = 0
+
+    //Set the animation
+    var body: some View {
+        GeometryReader { geometry in
+            HStack(spacing: 0) {
+                self.content.frame(width: geometry.size.width)
+            }
+            .frame(width: geometry.size.width, alignment: .leading)
+            .offset(x: -CGFloat(self.currentIndex) * geometry.size.width)
+            .offset(x: self.translation)
+
+                
+//            .gesture(
+//                DragGesture().updating(self.$translation) { value, state, _ in
+//                    state = value.translation.width
+//                }.onEnded { value in
+//                    let offset = value.translation.width / geometry.size.width
+//                    let newIndex = (CGFloat(self.currentIndex) - offset).rounded()
+//                    self.currentIndex = min(max(Int(newIndex), 0), self.pageCount - 1)
+//                }
+//            )
+        }
+    }
+}
+//
+//  PageControl.swift
+//  Lifetool
+//
+//  Created by 范艺晨 on 2020/5/1.
+//  Copyright © 2020 SUESiOSClub. All rights reserved.
+//
+
+import SwiftUI
+
+struct PageControl:UIViewRepresentable{
+    var numberOFPages:Int
+    
+    @Binding var currentPageIndex: Int
+    
+    func makeUIView(context: Context) -> UIPageControl {
+        let control = UIPageControl()
+        control.numberOfPages = numberOFPages
+        control.currentPageIndicatorTintColor = UIColor(named: "ThemeColor")
+        control.pageIndicatorTintColor = UIColor.gray
+        return control
+    }
+    
+    func updateUIView(_ uiView:UIPageControl,context:Context){
+        uiView.currentPage = currentPageIndex
+    }
+}
+//
+//  InstructionCard.swift
+//  Lifetool
+//
+//  Created by 范艺晨 on 2020/3/28.
+//  Copyright © 2020 SUESiOSClub. All rights reserved.
+//
+
+import SwiftUI
+
+struct InstructionCardContentView: View {
+    var content:InstructionContent
+    var body: some View {
+        VStack{
+            VStack(alignment:.leading){
+                if content.title != nil{
+                    Text(content.title!).font(.title).fontWeight(.bold).foregroundColor(Color("ThemeColor"))
+                    Spacer().frame(height: 5)
+                }
+                Text(content.content).font(.body).lineSpacing(3)
+            }.padding()
+        }.frame(width:4/5*UIScreen.main.bounds.width,alignment: .leading)
+    }
+}
+
+struct InstructionCardView: View {
+    
+    var instruction:Instruction
+    
+    init(instruction:Instruction){
+        UITableView.appearance().separatorColor = .clear
+        UITableViewCell.appearance().backgroundColor = .none
+        UITableView.appearance().backgroundColor = .none
+        self.instruction=instruction
+    }
+    
+    var body: some View {
+        VStack(alignment:.leading){
+            Text(instruction.title).font(.largeTitle)
+                .fontWeight(.heavy)
+                .foregroundColor(Color("ThemeColor"))
+                .padding()
+//            Spacer().frame(height: 10)
+            if instruction.describe != nil{
+                Text(instruction.describe!)
+                    .font(.headline)
+                    .padding([.top, .leading, .trailing])
+            }
+            if instruction.warning != nil{
+                Text(instruction.warning!)
+                    .font(.headline)
+                    .foregroundColor(Color.white)
+                    .padding()
+                    .background(Color("ThemeColor"))
+            }
+            if instruction.content != nil{
+                List{
+                    ForEach(instruction.content!) {content in
+                        InstructionCardContentView(content: content)
+                        .background(RoundedRectangle(cornerRadius: 10).fill(Color("HighlightWhite")))
+                    }
+                }.listRowBackground(Color("Background"))
+                .background(Color("Background"))
+            }
+        }.background(Color("Background"))
+    }
+}
+
+struct ButtonContent: View {
+    var body: some View {
+        Image(systemName: "arrow.right")
+            .resizable()
+            .foregroundColor(Color.white)
+            .frame(width: 20, height: 20)
+            .padding()
+            .background(Color("ThemeColor"))
+            .cornerRadius(30)
+    }
+}
+
+struct InstructionContainer: View {
+    var instructions:[Instruction]
+    var subviews=[UIHostingController<InstructionCardView>]()
+    @State var currentPageIndex = 0
+    
+    init(instructions:[Instruction]){
+        self.instructions = instructions
+        for eachinstruction in self.instructions{
+            self.subviews.append(UIHostingController(rootView: InstructionCardView(instruction: eachinstruction)))
+        }
+    }
+    
+    var body: some View {
+        VStack(alignment:.leading){
+            Text(String(currentPageIndex+1)+"/"+String(instructions.count))
+                .foregroundColor(Color("ThemeColor"))
+                .font(.title)
+                .padding()
+            if !subviews.isEmpty{
+                InstructionPageViewController(currentPageIndex: $currentPageIndex, viewControllers: subviews)
+                HStack{
+                    PageControl(numberOFPages: subviews.count, currentPageIndex: $currentPageIndex).padding()
+                    Spacer()
+                    Button(action: {
+                        if self.currentPageIndex+1 == self.subviews.count{
+                            self.currentPageIndex = 0
+                        } else {
+                            self.currentPageIndex += 1
+                        }
+                    }) {
+                        ButtonContent()
+                        .padding()
+                    }
+                }
+            }
+        }
+    }
+}
+//
+//  BottomSheetView.swift
+//
+//  Created by Majid Jabrayilov
+//  Copyright © 2019 Majid Jabrayilov. All rights reserved.
+//
+
+import SwiftUI
+
+fileprivate enum Constants {
+    static let radius: CGFloat = 16
+    static let indicatorHeight: CGFloat = 6
+    static let indicatorWidth: CGFloat = 60
+    static let snapRatio: CGFloat = 0.25
+    static let minHeightRatio: CGFloat = 0.3
+}
+
+struct BottomSheetView<Content: View>: View {
+    @Binding var isOpen: Bool
+
+    let maxHeight: CGFloat
+    let minHeight: CGFloat
+    let content: Content
+
+    @GestureState private var translation: CGFloat = 0
+
+    private var offset: CGFloat {
+        isOpen ? 0 : maxHeight - minHeight
+    }
+
+    private var indicator: some View {
+        RoundedRectangle(cornerRadius: Constants.radius)
+            .fill(Color.secondary)
+            .frame(
+                width: Constants.indicatorWidth,
+                height: Constants.indicatorHeight
+        ).onTapGesture {
+            self.isOpen.toggle()
+        }
+    }
+
+    init(isOpen: Binding<Bool>, maxHeight: CGFloat, @ViewBuilder content: () -> Content) {
+        self.minHeight = maxHeight * Constants.minHeightRatio
+        self.maxHeight = maxHeight
+        self.content = content()
+        self._isOpen = isOpen
+    }
+
+    var body: some View {
+        GeometryReader { geometry in
+            VStack(spacing: 0) {
+                self.indicator.padding()
+                self.content
+            }
+            .frame(width: geometry.size.width, height: self.maxHeight, alignment: .top)
+            .background(Color(.secondarySystemBackground))
+            .cornerRadius(Constants.radius)
+            .frame(height: geometry.size.height, alignment: .bottom)
+            .offset(y: max(self.offset + self.translation, 0))
+            .animation(.interactiveSpring())
+            .gesture(
+                DragGesture().updating(self.$translation) { value, state, _ in
+                    state = value.translation.height
+                }.onEnded { value in
+                    let snapDistance = self.maxHeight * Constants.snapRatio
+                    guard abs(value.translation.height) > snapDistance else {
+                        return
+                    }
+                    self.isOpen = value.translation.height < 0
+                }
+            )
+        }
+    }
+}
+
+struct BottomSheetView_Previews: PreviewProvider {
+    static var previews: some View {
+        BottomSheetView(isOpen: .constant(false), maxHeight: 600) {
+            Rectangle().fill(Color.red)
+        }.edgesIgnoringSafeArea(.all)
+    }
+}
+//
+//  CustomTextField.swift
+//  Lifetool
+//
+//  Created by 范艺晨 on 2020/4/11.
+//  Copyright © 2020 SUESiOSClub. All rights reserved.
+//
+
+import SwiftUI
+import UIKit
+
+struct CustomTextField: UIViewRepresentable {
+    
+    let keyboardType:UIKeyboardType
+    @Binding var text:String
+    var placeholder:String
+    var isSafeText:Bool
+    var textAlignment:NSTextAlignment
+    
+    func makeUIView(context: Context) -> UITextField {
+        let textField = UITextField(frame:.zero)
+        textField.keyboardType = keyboardType
+        textField.delegate = context.coordinator
+        textField.placeholder = placeholder
+        textField.returnKeyType = .done
+        textField.textAlignment = self.textAlignment
+        if isSafeText{
+            textField.isSecureTextEntry = true
+        }
+        
+        _ = NotificationCenter.default.publisher(for: UITextField.textDidChangeNotification, object: textField)
+            .compactMap {
+                guard let field = $0.object as? UITextField else {
+                    return nil
+                }
+                return field.text
+            }
+            .sink {
+                self.text = $0
+            }
+        
+        return textField
+    }
+    
+    func updateUIView(_ uiView: UITextField, context: Context) {
+    }
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+    
+    class Coordinator: NSObject,UITextFieldDelegate{
+        var parent:CustomTextField
+        
+        init(_ textField:CustomTextField){
+            self.parent = textField
+        }
+        
+        func textFieldDidEndEditing(_ textField: UITextField) {
+            parent.text = textField.text ?? ""
+        }
+        
+        func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+            UIApplication.shared.windows.forEach{$0.endEditing(true)}
+            return true
+        }
+    }
+}
+//
+//  InstructionPageViewController.swift
+//  Lifetool
+//
+//  Created by 范艺晨 on 2020/4/2.
+//  Copyright © 2020 SUESiOSClub. All rights reserved.
+//
+
+import SwiftUI
+import UIKit
+
+struct InstructionPageViewController: UIViewControllerRepresentable {
+    @Binding var currentPageIndex:Int
+    
+    var viewControllers: [UIViewController]
+    
+    func makeUIViewController(context: Context) -> UIPageViewController {
+        let pageViewController = UIPageViewController(
+            transitionStyle: .scroll,
+            navigationOrientation: .horizontal)
+        pageViewController.dataSource = context.coordinator
+        pageViewController.delegate = context.coordinator
+        return pageViewController
+    }
+    
+    func updateUIViewController(_ pageViewController: UIPageViewController, context: Context) {
+        pageViewController.setViewControllers(
+            [viewControllers[currentPageIndex]], direction: .forward, animated: true)
+    }
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+    
+    class Coordinator:NSObject,UIPageViewControllerDataSource,UIPageViewControllerDelegate{
+        var parent: InstructionPageViewController
+
+        init(_ pageViewController: InstructionPageViewController) {
+            self.parent = pageViewController
+        }
+        
+        func pageViewController(_ pageViewController: UIPageViewController, viewControllerBefore viewController: UIViewController) -> UIViewController? {
+            //retrieves the index of the currently displayed view controller
+            guard let index = parent.viewControllers.firstIndex(of: viewController) else {
+                 return nil
+             }
+            
+            //shows the last view controller when the user swipes back from the first view controller
+            if index == 0 {
+                return parent.viewControllers.last
+            }
+            
+            //show the view controller before the currently displayed view controller
+            return parent.viewControllers[index - 1]
+        }
+        
+        func pageViewController(_ pageViewController: UIPageViewController, viewControllerAfter viewController: UIViewController) -> UIViewController? {
+                //retrieves the index of the currently displayed view controller
+                guard let index = parent.viewControllers.firstIndex(of: viewController) else {
+                    return nil
+                }
+                //shows the first view controller when the user swipes further from the last view controller
+                if index + 1 == parent.viewControllers.count {
+                    return parent.viewControllers.first
+                }
+                //show the view controller after the currently displayed view controller
+                return parent.viewControllers[index + 1]
+        }
+        
+        func pageViewController(_ pageViewController: UIPageViewController, didFinishAnimating finished: Bool, previousViewControllers: [UIViewController], transitionCompleted completed: Bool) {
+            if completed,
+                let visibleViewController = pageViewController.viewControllers?.first,
+                let index = parent.viewControllers.firstIndex(of:visibleViewController){
+                parent.currentPageIndex = index
+            }
+        }
+    }
+}
+//
+//  SceneDelegate.swift
+//  Lifetool
+//
+//  Created by 范艺晨 on 2020/2/24.
+//  Copyright © 2020 SUESiOSClub. All rights reserved.
+//
+
+import UIKit
+import SwiftUI
+import Foundation
+import SystemConfiguration
+import Reachability
+
+class AnyGestureRecognizer: UIGestureRecognizer {
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent) {
+        //To prevent keyboard hide and show when switching from one textfield to another
+        if let textField = touches.first?.view, textField is UITextField {
+            state = .failed
+        } else {
+            state = .began
+        }
+    }
+
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+       state = .ended
+    }
+
+    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent) {
+        state = .cancelled
+    }
+}
+
+class SceneDelegate: UIResponder, UIWindowSceneDelegate {
+
+    var window: UIWindow?
+
+    @State var status:String = "Login"
+    @State var user = User()
+
+    func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
+        // Use this method to optionally configure and attach the UIWindow `window` to the provided UIWindowScene `scene`.
+        // If using a storyboard, the `window` property will automatically be initialized and attached to the scene.
+        // This delegate does not imply the connecting scene or session are new (see `application:configurationForConnectingSceneSession` instead).
+
+        // Create the SwiftUI view that provides the window contents.
+//        let hometabView = HomeTabView()
+
+        // Use a UIHostingController as window root view controller.
+        
+        
+        if let windowScene = scene as? UIWindowScene {
+            
+            let window = UIWindow(windowScene: windowScene)
+            window.rootViewController = UIHostingController(rootView: AppRootView())
+            self.window = window
+            window.makeKeyAndVisible()
+            
+            let tapGesture = AnyGestureRecognizer(target: window, action:#selector(UIView.endEditing))
+            tapGesture.requiresExclusiveTouchType = false
+            tapGesture.cancelsTouchesInView = false
+            tapGesture.delegate = self //I don't use window as delegate to minimize possible side effects
+            window.addGestureRecognizer(tapGesture)
+        }
+    }
+
+    func sceneDidDisconnect(_ scene: UIScene) {
+        // Called as the scene is being released by the system.
+        // This occurs shortly after the scene enters the background, or when its session is discarded.
+        // Release any resources associated with this scene that can be re-created the next time the scene connects.
+        // The scene may re-connect later, as its session was not neccessarily discarded (see `application:didDiscardSceneSessions` instead).
+    }
+
+    func sceneDidBecomeActive(_ scene: UIScene) {
+        // Called when the scene has moved from an inactive state to an active state.
+        // Use this method to restart any tasks that were paused (or not yet started) when the scene was inactive.
+    }
+
+    func sceneWillResignActive(_ scene: UIScene) {
+        // Called when the scene will move from an active state to an inactive state.
+        // This may occur due to temporary interruptions (ex. an incoming phone call).
+    }
+
+    func sceneWillEnterForeground(_ scene: UIScene) {
+        // Called as the scene transitions from the background to the foreground.
+        // Use this method to undo the changes made on entering the background.
+    }
+
+    func sceneDidEnterBackground(_ scene: UIScene) {
+        // Called as the scene transitions from the foreground to the background.
+        // Use this method to save data, release shared resources, and store enough scene-specific state information
+        // to restore the scene back to its current state.
+    }
+
+
+}
+
+extension SceneDelegate: UIGestureRecognizerDelegate {
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+        return true
+    }
+}

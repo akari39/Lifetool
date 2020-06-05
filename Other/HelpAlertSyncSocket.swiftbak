@@ -1,0 +1,114 @@
+//
+//  HelpAlertSyncSocket.swift
+//  Lifetool
+//
+//  Created by 范艺晨 on 2020/5/1.
+//  Copyright © 2020 SUESiOSClub. All rights reserved.
+//
+
+import Foundation
+import Starscream
+
+class HelpAlertSyncSocket:WebSocketDelegate,ObservableObject {
+    var socket:WebSocket?
+    @Published var helpedUser = [HelpUser]()
+    @Published var helpingUser = [HelpUser]()
+    let url:String = "ws://18.178.160.165:5678"
+    
+    @Published var isConnected:Bool = false
+    
+    func connect(){
+        var request = URLRequest(url:URL(string:url)!)
+        request.timeoutInterval = 10
+        self.socket = WebSocket(request: request)
+        socket?.delegate = self
+        socket?.connect()
+        self.isConnected = true
+    }
+    
+    func send(string:String){
+        socket?.write(string: string, completion: {
+            print("Sent: \(string)")
+        })
+    }
+    
+    func send(request:SocketSend){
+        if request.convertToDict() != nil {
+            let jsonData = try! JSONSerialization.data(withJSONObject: request, options: .fragmentsAllowed)
+            let string = String(decoding: jsonData, as: UTF8.self)
+            socket?.write(string: string, completion: {
+                print("Sent: \(string)")
+            })
+        }
+    }
+
+    func didReceive(event: WebSocketEvent, client: WebSocket) {
+        switch event {
+        case .connected(let headers):
+            print("Websocket is connected:\(headers)")
+        case .disconnected(_, _):
+            print("Websocket is disconnected. ")
+        case .text(let string):
+            if let data = string.data(using: .utf8){
+                do {
+                    let socketReceive = try JSONDecoder().decode(Dictionary<String,String>.self, from: data)
+                    if socketReceive["type"] == "execResult"{
+                        if socketReceive["execOKOrNotFlag"] == "1" {
+                            print("Websocket: 执行成功")
+                        } else if socketReceive["execOKOrNotFlag"] == "0" {
+                            print("Websocket: 执行失败")
+                        }
+                    }else if socketReceive["type"] == WebsocketReceiveType.helpedraise.rawValue{
+                        if let helpeduser = try? JSONDecoder().decode(SocketReceive.self,from: data){
+                            self.helpedUser = helpeduser.content?.user as! [HelpUser]
+                        }
+                    }else if socketReceive["type"] == WebsocketReceiveType.helpingraise.rawValue{
+                        if let helpinguser = try? JSONDecoder().decode(SocketReceive.self,from: data){
+                            self.helpingUser = helpinguser.content?.user as! [HelpUser]
+                        }
+                    }else if socketReceive["type"] == WebsocketReceiveType.helpedcancel.rawValue{
+                        var userToRemove = [Int]()
+                        var i=0
+                        for user in helpedUser{
+                            if user.userHealth.User_ID == socketReceive["user"]{
+                                userToRemove.append(i)
+                            }
+                            i+=1;
+                        }
+                        for each in userToRemove{
+                            helpedUser.remove(at: each)
+                        }
+                    }else if socketReceive["type"] == WebsocketReceiveType.helpingcancel.rawValue{
+                        var userToRemove = [Int]()
+                        var i=0
+                        for user in helpingUser{
+                            if user.userHealth.User_ID == socketReceive["user"]{
+                                userToRemove.append(i)
+                            }
+                            i+=1;
+                        }
+                        for each in userToRemove{
+                            helpingUser.remove(at: each)
+                        }
+                    }
+                } catch {
+                    print(error.localizedDescription)
+                }
+            }
+        case .binary(_):
+            break
+        case .pong(_):
+            print("Ponged")
+        case .ping(_):
+            print("Pinged")
+        case .error(let error):
+            print(error as Any)
+        case .viabilityChanged(_):
+            break
+        case .reconnectSuggested(_):
+            break
+        case .cancelled:
+            self.isConnected = false
+        }
+    }
+}
