@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "医院_default.png",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

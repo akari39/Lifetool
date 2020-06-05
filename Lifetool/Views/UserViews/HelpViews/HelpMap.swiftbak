@@ -1,0 +1,56 @@
+//
+//  HelpMap.swift
+//  Lifetool
+//
+//  Created by 范艺晨 on 2020/3/17.
+//  Copyright © 2020 SUESiOSClub. All rights reserved.
+//
+
+import SwiftUI
+import MapKit
+import CoreLocation
+
+struct HelpMap: UIViewRepresentable {
+    @Binding var userTrackingMode:MKUserTrackingMode
+    @State var coordinate:[CLLocationCoordinate2D]
+    
+    func makeUIView(context:Context) -> MKMapView {
+        let mapView = MKMapView(frame:.zero)
+        mapView.delegate = context.coordinator
+        
+        locationManager.requestWhenInUseAuthorization()
+        locationManager.requestAlwaysAuthorization()
+        
+        if CLLocationManager.locationServicesEnabled(){
+            mapView.showsUserLocation = true
+            mapView.userTrackingMode = .follow
+            mapView.centerCoordinate = mapView.userLocation.coordinate
+            let span = MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+            let region = MKCoordinateRegion(center: mapView.userLocation.coordinate, span: span)
+            mapView.setRegion(region, animated: true)
+        }
+        
+        return mapView
+    }
+    
+    func updateUIView(_ mapView: MKMapView,context:Context){
+        mapView.setUserTrackingMode(userTrackingMode, animated: true)
+        let span = MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+        let region = MKCoordinateRegion(center: mapView.userLocation.coordinate, span: span)
+        mapView.setRegion(region, animated: true)
+    }
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+    
+    class Coordinator: NSObject,MKMapViewDelegate{
+        var parent: HelpMap
+
+        init(_ parent: HelpMap) {
+            self.parent = parent
+        }
+        
+        
+    }
+}

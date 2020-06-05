@@ -1,0 +1,259 @@
+//
+//  BigMap.swift
+//  Lifetool
+//
+//  Created by 范艺晨 on 2020/5/1.
+//  Copyright © 2020 SUESiOSClub. All rights reserved.
+//
+
+import SwiftUI
+import CoreLocation
+
+
+struct HelpedCard: View {
+    @State var user_id:String
+    @State var name:String?
+    @State var distance:String
+    @State var property:String
+    @State var isCancel:Bool = false
+    
+    @State var isHelping:Bool = false
+    @State var user:User
+    @Binding var socket:HelpAlertSyncSocket
+    
+    var body:some View{
+        ZStack{
+            if isHelping{
+                RoundedRectangle(cornerRadius: 10).fill(Color("ThemeColor"))
+            } else {
+                RoundedRectangle(cornerRadius: 10).fill(Color("ThemeColor").opacity(25/100))
+            }
+            
+            HStack {
+                Spacer()
+                if isHelping{
+                    Image(systemName: "person.fill").resizable().foregroundColor(Color.white)
+                    Spacer()
+                    VStack{
+                        Text(name ?? "某位用户").foregroundColor(Color.white).font(.headline)
+                        Text(distance).foregroundColor(Color.white).font(.caption)
+                    }
+                } else {
+                    Image(systemName: "person.fill").resizable().foregroundColor(Color("ThemeColor"))
+                    Spacer()
+                    VStack{
+                        Text(name ?? "某位用户").foregroundColor(Color("ThemeColor")).font(.headline)
+                        Text(distance).foregroundColor(Color("ThemeColor")).font(.caption)
+                    }
+                }
+                Spacer()
+                Button(action:{
+                    if self.property == "救助" {
+                        if self.isCancel{
+                            self.socket.send(request: SocketSend(request: .cancelHelping, Helping_User_ID: self.user.userAccount?.User_ID, Helped_User_ID: self.user_id))
+                        } else {
+                            self.socket.send(request: SocketSend(request: .submitHelping, Helping_User_ID: self.user.userAccount?.User_ID, Helped_User_ID: self.user_id, latitude: "\(Float(locationManager.location?.coordinate.latitude ?? 0))", longitude: "\(Float(locationManager.location?.coordinate.longitude ?? 0))"))
+                            self.isCancel = true
+                        }
+                    }
+                }){
+                    if !isCancel{
+                        Text(property).fontWeight(.bold)
+                    } else {
+                        Text("取消").fontWeight(.bold)
+                    }
+                }
+                Spacer().frame(width:20)
+            }
+        }
+    }
+}
+
+func string2Date(_ string:String, dateFormat:String = "yyyy-MM-dd HH:mm:ss") -> Date {
+    let formatter = DateFormatter()
+    formatter.locale = Locale.init(identifier: "zh_CN")
+    formatter.dateFormat = dateFormat
+    let date = formatter.date(from: string)
+    return date!
+}
+
+extension Date {
+    
+    static func -(recent: Date, previous: Date) -> (month: Int?, day: Int?, hour: Int?, minute: Int?, second: Int?) {
+        let day = Calendar.current.dateComponents([.day], from: previous, to: recent).day
+        let month = Calendar.current.dateComponents([.month], from: previous, to: recent).month
+        let hour = Calendar.current.dateComponents([.hour], from: previous, to: recent).hour
+        let minute = Calendar.current.dateComponents([.minute], from: previous, to: recent).minute
+        let second = Calendar.current.dateComponents([.second], from: previous, to: recent).second
+
+        return (month: month, day: day, hour: hour, minute: minute, second: second)
+    }
+}
+
+struct HelpView:View{
+    @State var type:UserType
+    @State var userHealth:UserHealth?{
+        didSet{
+            if self.userHealth?.BornYear != nil && self.userHealth?.BornYear != ""{
+                let bornYear_date = string2Date(self.userHealth!.BornYear!)
+                let currentDate = Date()
+                let timeInterval = currentDate - bornYear_date
+                self.age = Int(timeInterval.day!/365)
+            }
+        }
+    }
+    @State var age:Int?
+    @State var userSkill:UserSkill?
+    @State var distance:String
+    
+    enum UserType {
+        case helped
+        case helping
+    }
+    
+    var body:some View{
+        VStack{
+            VStack(alignment: .center){
+                VStack(alignment: .center){
+                    Text(userHealth?.Name ?? "某位用户").font(.title)
+                    if type == UserType.helped{
+                        HStack{
+                            if age != nil{
+                                Text("\(age!)").padding(.horizontal, 3.0).font(.footnote)
+                            }
+                            
+                            if userHealth?.Sex != nil{
+                                Text(userHealth!.Sex!).font(.footnote)
+                                    .padding(.horizontal, 3.0)
+                            }
+                            
+                            if userHealth?.BloodType != nil{
+                                Text(userHealth!.BloodType!)
+                                    .fontWeight(.bold)
+                                    .padding(.horizontal, 3.0)
+                                    .foregroundColor(Color("ThemeColor"))
+                                    .font(.footnote)
+                            }
+                        }
+                        Spacer().frame(height:20)
+                        VStack(alignment: .leading){
+                            if userHealth?.Height != nil{
+                                HStack{
+                                    Text("身高").fontWeight(.bold)
+                                    Spacer()
+                                    Text(userHealth!.Height!)
+                                    Spacer()
+                                }
+                            }
+                            
+                            if userHealth?.Weight != nil{
+                                HStack{
+                                    Text("体重").fontWeight(.bold)
+                                    Text(userHealth!.Weight!)
+                                    Spacer()
+                                }
+                            }
+                            
+                            if userHealth?.DiseaseHistory != nil{
+                                VStack{
+                                    Text("病史").fontWeight(.bold)
+                                    Spacer()
+                                    Text(userHealth!.DiseaseHistory!)
+                                }
+                            }
+                            
+                            if userHealth?.Anaphylaxis != nil {
+                                VStack{
+                                    Text("过敏反应").fontWeight(.bold)
+                                    Spacer()
+                                    Text(userHealth!.Anaphylaxis!)
+                                }
+                            }
+                        }
+                    } else {
+                        HStack{
+                            Text("是医护人员").fontWeight(.bold)
+                            Spacer()
+                            if userSkill!.isDoctor == "1"{
+                                Text("是")
+                            } else {
+                                Text("否")
+                            }
+                        }
+                        
+                        HStack{
+                            Text("接受过训练").fontWeight(.bold)
+                            Spacer()
+                            if userSkill!.isTrained == "1"{
+                                Text("是")
+                            } else {
+                                Text("否")
+                            }
+                        }
+                    }
+                }
+            }.padding()
+            Spacer()
+        }
+    }
+}
+
+struct BigMap: View {
+    @State var isBottomSheetOpen:Bool = false
+    @State var ishelpinginfo = false
+    @State var ishelpedinfo = false
+    @EnvironmentObject var socket:HelpAlertSyncSocket
+    
+    //ThisUser
+    @Binding var user:User
+    
+    init(user:Binding<User>){
+        UITableView.appearance().separatorColor = .clear
+        UITableViewCell.appearance().backgroundColor = .none
+        UITableView.appearance().backgroundColor = .none
+        self._user = user
+        
+    }
+    
+    
+    var body: some View {
+        ZStack(alignment: .bottom){
+            GeometryReader { geometry in
+                BottomSheetView(isOpen: self.$isBottomSheetOpen, maxHeight: geometry.size.height * 0.6)
+                {
+                    Form{
+                        List{
+//                            if self.ishelpedinfo{
+//                                Section(header: Text("救助列表")){
+//                                    ForEach(socket.helpingUser, id: \HelpUser.userHealth.User_ID){
+//                                        userHealth,userLocation,userSkill in
+//                                        HelpedCard(user_id: userHealth, name: userHealth.Name, distance: "\(Int(CLLocation(latitude: (locationManager.location?.coordinate.latitude) ?? 0, longitude: (locationManager.location?.coordinate.longitude) ?? 0).distance(from: CLLocation(latitude: CLLocationDegrees(Float(userLocation.latitude)), longitude: CLLocationDegrees((Float(userLocation.longitude)))))))", property: "救助", isCancel: false, isHelping: true, user: self.user, socket: self.socket)
+//                                    }
+//
+//                                }
+//                            }
+//
+//                            if self.ishelpinginfo{
+//                                Section(header: Text("求助列表")){
+//                                    ForEach(socket.helpedUser, id: \HelpUser.userHealth.User_ID){
+//                                        userHealth,userLocation,userSkill in
+//                                        HelpedCard(user_id: userHealth, name: userHealth.Name, distance: "\(Int(CLLocation(latitude: (locationManager.location?.coordinate.latitude) ?? 0, longitude: (locationManager.location?.coordinate.longitude) ?? 0).distance(from: CLLocation(latitude: CLLocationDegrees(Float(userLocation.latitude)), longitude: CLLocationDegrees((Float(userLocation.longitude)))))))", property: "救助", isCancel: false, isHelping: false, user: self.user, socket: self.socket)
+//                                }
+//                            }
+                            
+                            if !self.ishelpinginfo && !self.ishelpedinfo {
+                                Text("暂无信息")
+                            }
+                        }
+                    }
+                }
+            }.edgesIgnoringSafeArea(.all)
+        }
+    }
+}
+
+//struct BigMap_Previews: PreviewProvider {
+//    static var previews: some View {
+//        BigMap()
+//    }
+//}

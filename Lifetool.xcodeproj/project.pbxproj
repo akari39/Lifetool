@@ -3,18 +3,54 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 50;
+	objectVersion = 51;
 	objects = {
 
 /* Begin PBXBuildFile section */
+		630A08E62462AB3E0093537C /* HelpList.swift in Sources */ = {isa = PBXBuildFile; fileRef = 630A08E52462AB3E0093537C /* HelpList.swift */; };
+		630EECFB242C9EC400BDBE48 /* Instruction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 630EECFA242C9EC400BDBE48 /* Instruction.swift */; };
+		630EED3B242F08B500BDBE48 /* CallGuide.json in Resources */ = {isa = PBXBuildFile; fileRef = 630EED3A242F08B500BDBE48 /* CallGuide.json */; };
+		630EED3D242F2EC200BDBE48 /* Data.swift in Sources */ = {isa = PBXBuildFile; fileRef = 630EED3C242F2EC200BDBE48 /* Data.swift */; };
+		630EED40242F628100BDBE48 /* InstructionCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 630EED3F242F628100BDBE48 /* InstructionCard.swift */; };
+		634BF9DF24358E7B0084CAA0 /* InstructionPageViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 634BF9DE24358E7B0084CAA0 /* InstructionPageViewController.swift */; };
 		635ACF482403E8DF00602C86 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 635ACF472403E8DF00602C86 /* AppDelegate.swift */; };
 		635ACF4A2403E8DF00602C86 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 635ACF492403E8DF00602C86 /* SceneDelegate.swift */; };
-		635ACF4C2403E8DF00602C86 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 635ACF4B2403E8DF00602C86 /* ContentView.swift */; };
+		635ACF4C2403E8DF00602C86 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 635ACF4B2403E8DF00602C86 /* HomeView.swift */; };
 		635ACF4E2403E8E100602C86 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 635ACF4D2403E8E100602C86 /* Assets.xcassets */; };
 		635ACF512403E8E100602C86 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 635ACF502403E8E100602C86 /* Preview Assets.xcassets */; };
 		635ACF542403E8E100602C86 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 635ACF522403E8E100602C86 /* LaunchScreen.storyboard */; };
 		635ACF5F2403E8E100602C86 /* LifetoolTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 635ACF5E2403E8E100602C86 /* LifetoolTests.swift */; };
 		635ACF6A2403E8E200602C86 /* LifetoolUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 635ACF692403E8E200602C86 /* LifetoolUITests.swift */; };
+		635ACF7E240643E600602C86 /* MapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 635ACF7D240643E600602C86 /* MapView.swift */; };
+		635ACF8624065F1200602C86 /* QuickNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 635ACF8524065F1200602C86 /* QuickNavigation.swift */; };
+		635C9F9224123C7E003FD049 /* HealthKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 635ACF792403E9D300602C86 /* HealthKit.framework */; };
+		6366F47A244BE39E000F804F /* AED.json in Resources */ = {isa = PBXBuildFile; fileRef = 6366F478244BE39E000F804F /* AED.json */; };
+		6366F47B244BE39E000F804F /* CPR.json in Resources */ = {isa = PBXBuildFile; fileRef = 6366F479244BE39E000F804F /* CPR.json */; };
+		6366F47D244C8381000F804F /* MapKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6366F47C244C8381000F804F /* MapKit.framework */; };
+		636967B42445877300C9E3C4 /* User.swift in Sources */ = {isa = PBXBuildFile; fileRef = 636967B32445877300C9E3C4 /* User.swift */; };
+		636967B62445F38500C9E3C4 /* TipsPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 636967B52445F38500C9E3C4 /* TipsPageView.swift */; };
+		636967B824460BDE00C9E3C4 /* DetailHealth3.swift in Sources */ = {isa = PBXBuildFile; fileRef = 636967B724460BDE00C9E3C4 /* DetailHealth3.swift */; };
+		636CBBB82443FE8A00E768CE /* PickerTextfield.swift in Sources */ = {isa = PBXBuildFile; fileRef = 636CBBB72443FE8A00E768CE /* PickerTextfield.swift */; };
+		636CBBBA24445AAF00E768CE /* DetailHealth2.swift in Sources */ = {isa = PBXBuildFile; fileRef = 636CBBB924445AAF00E768CE /* DetailHealth2.swift */; };
+		63743731245C1D8F0025382F /* PageControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63743730245C1D8F0025382F /* PageControl.swift */; };
+		63818A90245C03F200617B6D /* NetworkManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63818A8F245C03F200617B6D /* NetworkManager.swift */; };
+		639AE23B24631037005B9D00 /* HelpMap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 639AE23A24631037005B9D00 /* HelpMap.swift */; };
+		639AE23D246311CB005B9D00 /* HelpDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 639AE23C246311CB005B9D00 /* HelpDetailView.swift */; };
+		639AE77724598ABE00D2DBB0 /* (null) in Embed Frameworks */ = {isa = PBXBuildFile; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		639AE77A245AC94F00D2DBB0 /* PagerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 639AE779245AC94F00D2DBB0 /* PagerManager.swift */; };
+		639C1CF0242103410091D530 /* Tips.swift in Sources */ = {isa = PBXBuildFile; fileRef = 639C1CEF242103410091D530 /* Tips.swift */; };
+		639C1CF2242104DC0091D530 /* CallGuide.swift in Sources */ = {isa = PBXBuildFile; fileRef = 639C1CF1242104DC0091D530 /* CallGuide.swift */; };
+		63A105C62441728200420577 /* UserInfoSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63A105C52441728200420577 /* UserInfoSheet.swift */; };
+		63A105CC244173C700420577 /* Register.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63A105CB244173C700420577 /* Register.swift */; };
+		63A105D02441EEB900420577 /* LifetoolRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63A105CF2441EEB900420577 /* LifetoolRootView.swift */; };
+		63A105D22442205700420577 /* CustomTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63A105D12442205700420577 /* CustomTextField.swift */; };
+		63A940AB2435DE150083D71F /* Login.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63A940AA2435DE150083D71F /* Login.swift */; };
+		63A940AD2435DE210083D71F /* RegisterPassword.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63A940AC2435DE210083D71F /* RegisterPassword.swift */; };
+		63A940B12435DE440083D71F /* DetailHealth1.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63A940B02435DE440083D71F /* DetailHealth1.swift */; };
+		63E960D124078923001BA506 /* Impact.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 63E960D024078892001BA506 /* Impact.ttf */; };
+		63E960D32407A50D001BA506 /* QuickShape.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63E960D22407A50D001BA506 /* QuickShape.swift */; };
+		63E960DB2407F4C6001BA506 /* HomeTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63E960DA2407F4C6001BA506 /* HomeTabView.swift */; };
+		FED79C9506A7A6668D766F04 /* Pods_Lifetool.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 731CE33680789E4C39A32A24 /* Pods_Lifetool.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -34,11 +70,32 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		639AE77824598ABE00D2DBB0 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				639AE77724598ABE00D2DBB0 /* (null) in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		457916F153888F744F19B923 /* Pods-Lifetool.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Lifetool.release.xcconfig"; path = "Target Support Files/Pods-Lifetool/Pods-Lifetool.release.xcconfig"; sourceTree = "<group>"; };
+		630A08E52462AB3E0093537C /* HelpList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelpList.swift; sourceTree = "<group>"; };
+		630EECFA242C9EC400BDBE48 /* Instruction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Instruction.swift; sourceTree = "<group>"; };
+		630EED3A242F08B500BDBE48 /* CallGuide.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = CallGuide.json; sourceTree = "<group>"; };
+		630EED3C242F2EC200BDBE48 /* Data.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Data.swift; sourceTree = "<group>"; };
+		630EED3F242F628100BDBE48 /* InstructionCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstructionCard.swift; sourceTree = "<group>"; };
+		634BF9DE24358E7B0084CAA0 /* InstructionPageViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstructionPageViewController.swift; sourceTree = "<group>"; };
 		635ACF442403E8DF00602C86 /* Lifetool.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Lifetool.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		635ACF472403E8DF00602C86 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		635ACF492403E8DF00602C86 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
-		635ACF4B2403E8DF00602C86 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		635ACF4B2403E8DF00602C86 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		635ACF4D2403E8E100602C86 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		635ACF502403E8E100602C86 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		635ACF532403E8E100602C86 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
@@ -49,6 +106,37 @@
 		635ACF652403E8E200602C86 /* LifetoolUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LifetoolUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		635ACF692403E8E200602C86 /* LifetoolUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LifetoolUITests.swift; sourceTree = "<group>"; };
 		635ACF6B2403E8E200602C86 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		635ACF772403E9D200602C86 /* Lifetool.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Lifetool.entitlements; sourceTree = "<group>"; };
+		635ACF792403E9D300602C86 /* HealthKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = HealthKit.framework; path = System/Library/Frameworks/HealthKit.framework; sourceTree = SDKROOT; };
+		635ACF7D240643E600602C86 /* MapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapView.swift; sourceTree = "<group>"; };
+		635ACF8524065F1200602C86 /* QuickNavigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickNavigation.swift; sourceTree = "<group>"; };
+		6366F478244BE39E000F804F /* AED.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = AED.json; sourceTree = "<group>"; };
+		6366F479244BE39E000F804F /* CPR.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = CPR.json; sourceTree = "<group>"; };
+		6366F47C244C8381000F804F /* MapKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MapKit.framework; path = System/Library/Frameworks/MapKit.framework; sourceTree = SDKROOT; };
+		636967B32445877300C9E3C4 /* User.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = User.swift; sourceTree = "<group>"; };
+		636967B52445F38500C9E3C4 /* TipsPageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TipsPageView.swift; sourceTree = "<group>"; };
+		636967B724460BDE00C9E3C4 /* DetailHealth3.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailHealth3.swift; sourceTree = "<group>"; };
+		636CBBB72443FE8A00E768CE /* PickerTextfield.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickerTextfield.swift; sourceTree = "<group>"; };
+		636CBBB924445AAF00E768CE /* DetailHealth2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailHealth2.swift; sourceTree = "<group>"; };
+		63743730245C1D8F0025382F /* PageControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PageControl.swift; sourceTree = "<group>"; };
+		63818A8F245C03F200617B6D /* NetworkManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkManager.swift; sourceTree = "<group>"; };
+		639AE23A24631037005B9D00 /* HelpMap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelpMap.swift; sourceTree = "<group>"; };
+		639AE23C246311CB005B9D00 /* HelpDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelpDetailView.swift; sourceTree = "<group>"; };
+		639AE779245AC94F00D2DBB0 /* PagerManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PagerManager.swift; sourceTree = "<group>"; };
+		639C1CEF242103410091D530 /* Tips.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tips.swift; sourceTree = "<group>"; };
+		639C1CF1242104DC0091D530 /* CallGuide.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallGuide.swift; sourceTree = "<group>"; };
+		63A105C52441728200420577 /* UserInfoSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserInfoSheet.swift; sourceTree = "<group>"; };
+		63A105CB244173C700420577 /* Register.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Register.swift; sourceTree = "<group>"; };
+		63A105CF2441EEB900420577 /* LifetoolRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LifetoolRootView.swift; sourceTree = "<group>"; };
+		63A105D12442205700420577 /* CustomTextField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomTextField.swift; sourceTree = "<group>"; };
+		63A940AA2435DE150083D71F /* Login.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Login.swift; sourceTree = "<group>"; };
+		63A940AC2435DE210083D71F /* RegisterPassword.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegisterPassword.swift; sourceTree = "<group>"; };
+		63A940B02435DE440083D71F /* DetailHealth1.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailHealth1.swift; sourceTree = "<group>"; };
+		63E960D024078892001BA506 /* Impact.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Impact.ttf; sourceTree = "<group>"; };
+		63E960D22407A50D001BA506 /* QuickShape.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickShape.swift; sourceTree = "<group>"; };
+		63E960DA2407F4C6001BA506 /* HomeTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeTabView.swift; sourceTree = "<group>"; };
+		731CE33680789E4C39A32A24 /* Pods_Lifetool.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Lifetool.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		D14B99C4E998A8426687E585 /* Pods-Lifetool.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Lifetool.debug.xcconfig"; path = "Target Support Files/Pods-Lifetool/Pods-Lifetool.debug.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -56,6 +144,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				6366F47D244C8381000F804F /* MapKit.framework in Frameworks */,
+				635C9F9224123C7E003FD049 /* HealthKit.framework in Frameworks */,
+				FED79C9506A7A6668D766F04 /* Pods_Lifetool.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -76,6 +167,24 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		630819F1245C12E100B5D848 /* TipsViews */ = {
+			isa = PBXGroup;
+			children = (
+				639C1CEF242103410091D530 /* Tips.swift */,
+			);
+			path = TipsViews;
+			sourceTree = "<group>";
+		};
+		630EED3E242F5DE900BDBE48 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				6366F478244BE39E000F804F /* AED.json */,
+				6366F479244BE39E000F804F /* CPR.json */,
+				630EED3A242F08B500BDBE48 /* CallGuide.json */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
 		635ACF3B2403E8DE00602C86 = {
 			isa = PBXGroup;
 			children = (
@@ -83,6 +192,8 @@
 				635ACF5D2403E8E100602C86 /* LifetoolTests */,
 				635ACF682403E8E200602C86 /* LifetoolUITests */,
 				635ACF452403E8DF00602C86 /* Products */,
+				635ACF782403E9D300602C86 /* Frameworks */,
+				73F89984515D9D6B8B5977FE /* Pods */,
 			);
 			sourceTree = "<group>";
 		};
@@ -99,12 +210,16 @@
 		635ACF462403E8DF00602C86 /* Lifetool */ = {
 			isa = PBXGroup;
 			children = (
+				63EB423724640ED10047F3CA /* Views */,
+				63A940A72435DD4F0083D71F /* Models */,
+				630EED3E242F5DE900BDBE48 /* Resources */,
+				635ACF772403E9D200602C86 /* Lifetool.entitlements */,
 				635ACF472403E8DF00602C86 /* AppDelegate.swift */,
 				635ACF492403E8DF00602C86 /* SceneDelegate.swift */,
-				635ACF4B2403E8DF00602C86 /* ContentView.swift */,
 				635ACF4D2403E8E100602C86 /* Assets.xcassets */,
 				635ACF522403E8E100602C86 /* LaunchScreen.storyboard */,
 				635ACF552403E8E100602C86 /* Info.plist */,
+				63E960CF24078859001BA506 /* fonts */,
 				635ACF4F2403E8E100602C86 /* Preview Content */,
 			);
 			path = Lifetool;
@@ -136,6 +251,148 @@
 			path = LifetoolUITests;
 			sourceTree = "<group>";
 		};
+		635ACF782403E9D300602C86 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				6366F47C244C8381000F804F /* MapKit.framework */,
+				635ACF792403E9D300602C86 /* HealthKit.framework */,
+				731CE33680789E4C39A32A24 /* Pods_Lifetool.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		635D1133245C121700F3ECA2 /* CustomViews */ = {
+			isa = PBXGroup;
+			children = (
+				63A105D12442205700420577 /* CustomTextField.swift */,
+				636CBBB72443FE8A00E768CE /* PickerTextfield.swift */,
+				630EED3F242F628100BDBE48 /* InstructionCard.swift */,
+				634BF9DE24358E7B0084CAA0 /* InstructionPageViewController.swift */,
+				639AE779245AC94F00D2DBB0 /* PagerManager.swift */,
+				63743730245C1D8F0025382F /* PageControl.swift */,
+				63E960D22407A50D001BA506 /* QuickShape.swift */,
+			);
+			path = CustomViews;
+			sourceTree = "<group>";
+		};
+		635D1134245C124B00F3ECA2 /* HomeView */ = {
+			isa = PBXGroup;
+			children = (
+				635ACF4B2403E8DF00602C86 /* HomeView.swift */,
+				635ACF7D240643E600602C86 /* MapView.swift */,
+				635ACF8524065F1200602C86 /* QuickNavigation.swift */,
+				639C1CF1242104DC0091D530 /* CallGuide.swift */,
+			);
+			path = HomeView;
+			sourceTree = "<group>";
+		};
+		635D1135245C126500F3ECA2 /* LoginandRegister */ = {
+			isa = PBXGroup;
+			children = (
+				63A940AA2435DE150083D71F /* Login.swift */,
+				63A105CB244173C700420577 /* Register.swift */,
+				63EB423924640F6C0047F3CA /* Register */,
+			);
+			path = LoginandRegister;
+			sourceTree = "<group>";
+		};
+		63A940A62435DAEC0083D71F /* UserViews */ = {
+			isa = PBXGroup;
+			children = (
+				63A105CF2441EEB900420577 /* LifetoolRootView.swift */,
+				63E960DA2407F4C6001BA506 /* HomeTabView.swift */,
+				63A940A82435DD680083D71F /* HomeViews */,
+				63A940A92435DDAD0083D71F /* HelpViews */,
+				635D1135245C126500F3ECA2 /* LoginandRegister */,
+			);
+			path = UserViews;
+			sourceTree = "<group>";
+		};
+		63A940A72435DD4F0083D71F /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				630EECFA242C9EC400BDBE48 /* Instruction.swift */,
+				636967B32445877300C9E3C4 /* User.swift */,
+				630EED3C242F2EC200BDBE48 /* Data.swift */,
+				63DCD058245C0FA100C13328 /* Network */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		63A940A82435DD680083D71F /* HomeViews */ = {
+			isa = PBXGroup;
+			children = (
+				63A940B42435E0190083D71F /* InstructionViews */,
+				635D1134245C124B00F3ECA2 /* HomeView */,
+				63A105C52441728200420577 /* UserInfoSheet.swift */,
+			);
+			path = HomeViews;
+			sourceTree = "<group>";
+		};
+		63A940A92435DDAD0083D71F /* HelpViews */ = {
+			isa = PBXGroup;
+			children = (
+				630A08E52462AB3E0093537C /* HelpList.swift */,
+				639AE23A24631037005B9D00 /* HelpMap.swift */,
+				639AE23C246311CB005B9D00 /* HelpDetailView.swift */,
+			);
+			path = HelpViews;
+			sourceTree = "<group>";
+		};
+		63A940B42435E0190083D71F /* InstructionViews */ = {
+			isa = PBXGroup;
+			children = (
+				636967B52445F38500C9E3C4 /* TipsPageView.swift */,
+				630819F1245C12E100B5D848 /* TipsViews */,
+			);
+			path = InstructionViews;
+			sourceTree = "<group>";
+		};
+		63DCD058245C0FA100C13328 /* Network */ = {
+			isa = PBXGroup;
+			children = (
+				63818A8F245C03F200617B6D /* NetworkManager.swift */,
+			);
+			path = Network;
+			sourceTree = "<group>";
+		};
+		63E960CF24078859001BA506 /* fonts */ = {
+			isa = PBXGroup;
+			children = (
+				63E960D024078892001BA506 /* Impact.ttf */,
+			);
+			path = fonts;
+			sourceTree = "<group>";
+		};
+		63EB423724640ED10047F3CA /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				635D1133245C121700F3ECA2 /* CustomViews */,
+				63A940A62435DAEC0083D71F /* UserViews */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		63EB423924640F6C0047F3CA /* Register */ = {
+			isa = PBXGroup;
+			children = (
+				63A940AC2435DE210083D71F /* RegisterPassword.swift */,
+				63A940B02435DE440083D71F /* DetailHealth1.swift */,
+				636CBBB924445AAF00E768CE /* DetailHealth2.swift */,
+				636967B724460BDE00C9E3C4 /* DetailHealth3.swift */,
+			);
+			path = Register;
+			sourceTree = "<group>";
+		};
+		73F89984515D9D6B8B5977FE /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				D14B99C4E998A8426687E585 /* Pods-Lifetool.debug.xcconfig */,
+				457916F153888F744F19B923 /* Pods-Lifetool.release.xcconfig */,
+			);
+			path = Pods;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -143,9 +400,12 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 635ACF6E2403E8E200602C86 /* Build configuration list for PBXNativeTarget "Lifetool" */;
 			buildPhases = (
+				EB102D349126432315F90474 /* [CP] Check Pods Manifest.lock */,
 				635ACF402403E8DF00602C86 /* Sources */,
 				635ACF412403E8DF00602C86 /* Frameworks */,
 				635ACF422403E8DF00602C86 /* Resources */,
+				639AE77824598ABE00D2DBB0 /* Embed Frameworks */,
+				116E4B438C957B0DB3FBDEAB /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -240,7 +500,11 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				6366F47A244BE39E000F804F /* AED.json in Resources */,
+				63E960D124078923001BA506 /* Impact.ttf in Resources */,
+				630EED3B242F08B500BDBE48 /* CallGuide.json in Resources */,
 				635ACF542403E8E100602C86 /* LaunchScreen.storyboard in Resources */,
+				6366F47B244BE39E000F804F /* CPR.json in Resources */,
 				635ACF512403E8E100602C86 /* Preview Assets.xcassets in Resources */,
 				635ACF4E2403E8E100602C86 /* Assets.xcassets in Resources */,
 			);
@@ -262,14 +526,84 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		116E4B438C957B0DB3FBDEAB /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-Lifetool/Pods-Lifetool-frameworks-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-Lifetool/Pods-Lifetool-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Lifetool/Pods-Lifetool-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		EB102D349126432315F90474 /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-Lifetool-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		635ACF402403E8DF00602C86 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				63A105D22442205700420577 /* CustomTextField.swift in Sources */,
+				630EED40242F628100BDBE48 /* InstructionCard.swift in Sources */,
+				634BF9DF24358E7B0084CAA0 /* InstructionPageViewController.swift in Sources */,
+				639C1CF2242104DC0091D530 /* CallGuide.swift in Sources */,
+				636967B42445877300C9E3C4 /* User.swift in Sources */,
+				636967B824460BDE00C9E3C4 /* DetailHealth3.swift in Sources */,
 				635ACF482403E8DF00602C86 /* AppDelegate.swift in Sources */,
+				639C1CF0242103410091D530 /* Tips.swift in Sources */,
+				630EECFB242C9EC400BDBE48 /* Instruction.swift in Sources */,
+				639AE77A245AC94F00D2DBB0 /* PagerManager.swift in Sources */,
+				63818A90245C03F200617B6D /* NetworkManager.swift in Sources */,
+				63A105CC244173C700420577 /* Register.swift in Sources */,
+				63A940AB2435DE150083D71F /* Login.swift in Sources */,
+				630A08E62462AB3E0093537C /* HelpList.swift in Sources */,
+				635ACF7E240643E600602C86 /* MapView.swift in Sources */,
 				635ACF4A2403E8DF00602C86 /* SceneDelegate.swift in Sources */,
-				635ACF4C2403E8DF00602C86 /* ContentView.swift in Sources */,
+				63A940B12435DE440083D71F /* DetailHealth1.swift in Sources */,
+				636CBBB82443FE8A00E768CE /* PickerTextfield.swift in Sources */,
+				635ACF8624065F1200602C86 /* QuickNavigation.swift in Sources */,
+				636967B62445F38500C9E3C4 /* TipsPageView.swift in Sources */,
+				63E960DB2407F4C6001BA506 /* HomeTabView.swift in Sources */,
+				630EED3D242F2EC200BDBE48 /* Data.swift in Sources */,
+				636CBBBA24445AAF00E768CE /* DetailHealth2.swift in Sources */,
+				63E960D32407A50D001BA506 /* QuickShape.swift in Sources */,
+				635ACF4C2403E8DF00602C86 /* HomeView.swift in Sources */,
+				63A105C62441728200420577 /* UserInfoSheet.swift in Sources */,
+				63A940AD2435DE210083D71F /* RegisterPassword.swift in Sources */,
+				63A105D02441EEB900420577 /* LifetoolRootView.swift in Sources */,
+				639AE23D246311CB005B9D00 /* HelpDetailView.swift in Sources */,
+				63743731245C1D8F0025382F /* PageControl.swift in Sources */,
+				639AE23B24631037005B9D00 /* HelpMap.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -432,8 +766,10 @@
 		};
 		635ACF6F2403E8E200602C86 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = D14B99C4E998A8426687E585 /* Pods-Lifetool.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Lifetool/Lifetool.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_ASSET_PATHS = "\"Lifetool/Preview Content\"";
 				DEVELOPMENT_TEAM = HL47CW4UD7;
@@ -443,7 +779,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = SUESiOSClub.Lifetool;
+				PRODUCT_BUNDLE_IDENTIFIER = com.suesiosclub.xf2lifetool;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -452,8 +788,10 @@
 		};
 		635ACF702403E8E200602C86 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 457916F153888F744F19B923 /* Pods-Lifetool.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Lifetool/Lifetool.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_ASSET_PATHS = "\"Lifetool/Preview Content\"";
 				DEVELOPMENT_TEAM = HL47CW4UD7;
@@ -463,7 +801,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = SUESiOSClub.Lifetool;
+				PRODUCT_BUNDLE_IDENTIFIER = com.suesiosclub.xf2lifetool;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -475,6 +813,7 @@
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				BUNDLE_LOADER = "$(TEST_HOST)";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = HL47CW4UD7;
 				INFOPLIST_FILE = LifetoolTests/Info.plist;
@@ -497,6 +836,7 @@
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				BUNDLE_LOADER = "$(TEST_HOST)";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = HL47CW4UD7;
 				INFOPLIST_FILE = LifetoolTests/Info.plist;
